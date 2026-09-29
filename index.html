@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I-Motion – Herramientas rápidas</title>
+  <style>
+    :root {
+      --primary: #0f4c81;
+      --primary-dark: #0a3559;
+      --accent: #e8f1f8;
+      --card-bg: #ffffff;
+      --text: #1a1a1a;
+      --muted: #5a6a7a;
+      --border: #d0dbe6;
+      --success: #1a7f4b;
+      --shadow: 0 8px 24px rgba(15, 76, 129, 0.12);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(145deg, #eef4f9 0%, #d9e6f2 100%);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+
+    /* Home grid */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      min-height: 280px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(15, 76, 129, 0.18);
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 14px;
+      color: var(--primary);
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      color: var(--primary);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .card .preview {
+      flex: 1;
+      font-size: 0.88rem;
+      color: var(--muted);
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      white-space: pre-line;
+      margin-bottom: 16px;
+    }
+
+    .lang-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .lang-row label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    select {
+      flex: 1;
+      min-width: 120px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    select:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 1px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--accent);
+      color: var(--primary);
+    }
+
+    .btn-secondary:hover {
+      background: #d0e3f0;
+    }
+
+    .btn-copy {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+    }
+
+    .btn-copy:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-copy.copied {
+      background: var(--success);
+    }
+
+    /* CIF link card */
+    .card-cif {
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .card-cif .cta {
+      margin-top: auto;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Detail view (CIF) */
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .detail-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 32px 28px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .detail-card h2 {
+      font-size: 1.4rem;
+      color: var(--primary);
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .fiscal-data {
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+
+    .fiscal-data .row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .fiscal-data .row:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .fiscal-data .label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .fiscal-data .value {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .detail-actions .btn {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a1a;
+      color: #fff;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>I-Motion Group</h1>
+      <p>Herramientas rápidas · Datos fiscales · Instalaciones · Soporte</p>
+    </header>
+
+    <!-- HOME VIEW -->
+    <div id="view-home" class="view active">
+      <div class="cards">
+        <!-- Card 1: CIF -->
+        <a href="#" class="card card-cif" id="btn-cif" onclick="showView('cif'); return false;">
+          <div class="card-icon">🏢</div>
+          <h2>Imotion CIF</h2>
+          <p class="preview">Datos fiscales de la empresa.<br>Denominación, NIF, domicilio social y más.</p>
+          <div class="cta">Ver datos →</div>
+        </a>
+
+        <!-- Card 2: Instalaciones -->
+        <div class="card">
+          <div class="card-icon">🔧</div>
+          <h2>Instalaciones</h2>
+          <div class="lang-row">
+            <label for="lang-inst">Idioma:</label>
+            <select id="lang-inst" onchange="updateInstPreview()">
+              <option value="es" selected>Español</option>
+              <option value="en">English</option>
+              <option value="it">Italiano</option>
+              <option value="pt">Português</option>
+              <option value="fr">Français</option>
+            </select>
+          </div>
+          <div class="preview" id="preview-inst"></div>
+          <button class="btn btn-copy" id="btn-copy-inst" onclick="copyText('inst')">📋 Copiar texto completo</button>
+        </div>
+
+        <!-- Card 3: Atención telefónica -->
+        <div class="card">
+          <div class="card-icon">📞</div>
+          <h2>Atención telefónica</h2>
+          <div class="lang-row">
+            <label for="lang-phone">Idioma:</label>
+            <select id="lang-phone" onchange="updatePhonePreview()">
+              <option value="es" selected>Español</option>
+              <option value="en">English</option>
+              <option value="it">Italiano</option>
+              <option value="pt">Português</option>
+              <option value="fr">Français</option>
+            </select>
+          </div>
+          <div class="preview" id="preview-phone"></div>
+          <button class="btn btn-copy" id="btn-copy-phone" onclick="copyText('phone')">📋 Copiar texto completo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CIF DETAIL VIEW -->
+    <div id="view-cif" class="view">
+      <div class="detail-card">
+        <h2>Datos fiscales</h2>
+        <div class="fiscal-data" id="fiscal-text">
+          <div class="row">
+            <span class="label">Denominación</span>
+            <span class="value">I-MOTION GROUP GLOBAL IBERICA SL.</span>
+          </div>
+          <div class="row">
+            <span class="label">NIF</span>
+            <span class="value">B86999273</span>
+          </div>
+          <div class="row">
+            <span class="label">Domicilio social actual</span>
+            <span class="value">CALLE LABRADORES (POL INDUSTRIAL PRADO DEL ESPINO), 13</span>
+          </div>
+          <div class="row">
+            <span class="label">Código Postal</span>
+            <span class="value">28660</span>
+          </div>
+          <div class="row">
+            <span class="label">Municipio</span>
+            <span class="value">BOADILLA DEL MONTE</span>
+          </div>
+          <div class="row">
+            <span class="label">Provincia</span>
+            <span class="value">Madrid</span>
+          </div>
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-copy" id="btn-copy-cif" onclick="copyCif()">📋 Copiar datos</button>
+          <button class="btn btn-secondary" onclick="showView('home')">← Atrás</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copiado al portapapeles</div>
+
+  <footer>
+    I-Motion Group · Uso interno
+  </footer>
+
+  <script>
+    // ========== TEXTOS INSTALACIONES ==========
+    const textosInst = {
+      es: `Hola, soy Luis Miguel, técnico responsable de la instalación de su Shape Space.
+
+Para poder planificar la visita de la forma más eficiente, le agradecería que me facilitase **fotografías del área de instalación, de la entrada y del plano** de la estancia (si dispone de él). Además, si es posible, agradecería que nos enviase un **vídeo del recorrido completo** desde el punto donde se descargará la máquina hasta la habitación o espacio exacto donde se emplazará.
+
+Asimismo, le indico algunos aspectos clave a tener en cuenta para el día de la entrega y el montaje:
+
+• **Permisos de la vía pública y aparcamiento:** Corresponde al cliente gestionar con antelación los permisos necesarios en caso de que la descarga pueda interrumpir el tráfico o cortar la vía pública. Asimismo, es necesario reservar o asegurar un espacio de aparcamiento lo más cercano posible al acceso para poder desmontar la estructura ahí antes de traslados a su ubicación final.
+• **Ayuda para el transporte:** Se requerirá la asistencia de al menos una persona para mover las piezas más voluminosas durante la descarga y el acceso.
+• **Gestión de residuos:** La gestión y retirada de los embalajes sobrantes (incluyendo palés y la jaula de embalaje, que una vez desmontada genera aproximadamente 40 kg de madera) queda a cargo del cliente.
+
+Muchas gracias por su colaboración facilitando esta información antes de mi llegada. Quedo a su disposición si tiene cualquier duda.`,
+
+      en: `Hello, I am Luis Miguel, the technician responsible for the installation of your Shape Space.
+
+To plan the visit as efficiently as possible, I would appreciate it if you could provide me with **photographs of the installation area, the entrance and the floor plan** of the room (if you have one). Additionally, if possible, I would be grateful if you could send us a **full video of the route** from the point where the machine will be unloaded to the exact room or space where it will be placed.
+
+I would also like to point out some key aspects to take into account for the day of delivery and assembly:
+
+• **Public road permits and parking:** It is the client's responsibility to arrange in advance any necessary permits in case unloading may interrupt traffic or close the public road. It is also necessary to reserve or secure a parking space as close as possible to the access so that the structure can be dismantled there before being moved to its final location.
+• **Help with transport:** The assistance of at least one person will be required to move the bulkier pieces during unloading and access.
+• **Waste management:** The management and removal of leftover packaging (including pallets and the packaging cage, which once dismantled generates approximately 40 kg of wood) is the responsibility of the client.
+
+Thank you very much for your cooperation in providing this information before my arrival. I remain at your disposal if you have any questions.`,
+
+      it: `Ciao, sono Luis Miguel, il tecnico responsabile dell'installazione del vostro Shape Space.
+
+Per poter pianificare la visita nel modo più efficiente possibile, vi sarei grato se mi forniste **fotografie dell'area di installazione, dell'ingresso e della pianta** della stanza (se ne disponete). Inoltre, se possibile, vi sarei grato se ci inviastes un **video completo del percorso** dal punto in cui verrà scaricata la macchina fino alla stanza o allo spazio esatto in cui verrà posizionata.
+
+Vi indico inoltre alcuni aspetti chiave da tenere in considerazione per il giorno della consegna e del montaggio:
+
+• **Permessi della via pubblica e parcheggio:** Spetta al cliente gestire in anticipo i permessi necessari nel caso in cui lo scarico possa interrompere il traffico o chiudere la via pubblica. È inoltre necessario riservare o assicurare uno spazio di parcheggio il più vicino possibile all'accesso per poter smontare la struttura lì prima di trasferirla nella posizione finale.
+• **Aiuto per il trasporto:** Sarà richiesta l'assistenza di almeno una persona per spostare i pezzi più voluminosi durante lo scarico e l'accesso.
+• **Gestione dei rifiuti:** La gestione e la rimozione degli imballaggi residui (inclusi pallet e la gabbia di imballaggio, che una volta smontata genera circa 40 kg di legno) è a carico del cliente.
+
+Grazie mille per la vostra collaborazione nel fornire queste informazioni prima del mio arrivo. Rimango a vostra disposizione per qualsiasi dubbio.`,
+
+      pt: `Olá, sou Luis Miguel, o técnico responsável pela instalação do vosso Shape Space.
+
+Para poder planear a visita da forma mais eficiente possível, agradecia que me facultassem **fotografias da área de instalação, da entrada e da planta** da divisão (se dispuserem dela). Além disso, se possível, agradecia que nos enviassem um **vídeo completo do percurso** desde o ponto onde a máquina será descarregada até à divisão ou espaço exacto onde será colocada.
+
+Indico também alguns aspectos-chave a ter em conta no dia da entrega e montagem:
+
+• **Permissões da via pública e estacionamento:** Cabe ao cliente gerir com antecedência as permissões necessárias caso a descarga possa interromper o trânsito ou cortar a via pública. É também necessário reservar ou garantir um espaço de estacionamento o mais próximo possível do acesso para poder desmontar a estrutura aí antes de a deslocar para a localização final.
+• **Ajuda para o transporte:** Será necessária a assistência de pelo menos uma pessoa para mover as peças mais volumosas durante a descarga e o acesso.
+• **Gestão de resíduos:** A gestão e a retirada das embalagens sobrantes (incluindo paletes e a gaiola de embalagem, que uma vez desmontada gera aproximadamente 40 kg de madeira) fica a cargo do cliente.
+
+Muito obrigado pela vossa colaboração ao facultar esta informação antes da minha chegada. Fico à vossa disposição se tiverem qualquer dúvida.`,
+
+      fr: `Bonjour, je suis Luis Miguel, le technicien responsable de l'installation de votre Shape Space.
+
+Afin de planifier la visite de la manière la plus efficace possible, je vous serais reconnaissant de bien vouloir me fournir des **photographies de la zone d'installation, de l'entrée et du plan** de la pièce (si vous en disposez). De plus, si possible, je vous serais reconnaissant de nous envoyer une **vidéo complète du parcours** depuis le point où la machine sera déchargée jusqu'à la pièce ou l'espace exact où elle sera placée.
+
+Je vous indique également quelques points clés à prendre en compte pour le jour de la livraison et du montage :
+
+• **Autorisations de la voie publique et stationnement :** Il appartient au client de gérer à l'avance les autorisations nécessaires au cas où le déchargement pourrait interrompre la circulation ou fermer la voie publique. Il est également nécessaire de réserver ou d'assurer un espace de stationnement le plus proche possible de l'accès afin de pouvoir démonter la structure sur place avant de la déplacer vers son emplacement final.
+• **Aide pour le transport :** L'assistance d'au moins une personne sera requise pour déplacer les pièces les plus volumineuses lors du déchargement et de l'accès.
+• **Gestion des déchets :** La gestion et l'enlèvement des emballages restants (y compris les palettes et la cage d'emballage, qui une fois démontée génère environ 40 kg de bois) sont à la charge du client.
+
+Merci beaucoup pour votre collaboration en fournissant ces informations avant mon arrivée. Je reste à votre disposition si vous avez la moindre question.`
+    };
+
+    // ========== TEXTOS ATENCIÓN TELEFÓNICA ==========
+    const textosPhone = {
+      es: `Hola, por favor, póngase en contacto con nuestro equipo de soporte técnico para resolver su problema a través de este número de WhatsApp: +1 555 801 6479.`,
+      en: `Hello, please contact our technical support team to resolve your issue via this WhatsApp number: +1 555 801 6479.`,
+      it: `Ciao, la preghiamo di contattare il nostro team di supporto tecnico per risolvere il suo problema tramite questo numero WhatsApp: +1 555 801 6479.`,
+      pt: `Olá, por favor, entre em contacto com a nossa equipa de suporte técnico para resolver o seu problema através deste número de WhatsApp: +1 555 801 6479.`,
+      fr: `Bonjour, veuillez contacter notre équipe de support technique pour résoudre votre problème via ce numéro WhatsApp : +1 555 801 6479.`
+    };
+
+    // ========== DATOS CIF (texto plano para copiar) ==========
+    const cifPlain = `Denominación: I-MOTION GROUP GLOBAL IBERICA SL.
+NIF: B86999273
+Domicilio social actual: CALLE LABRADORES, 13
+Código Postal: 28660
+Municipio: BOADILLA DEL MONTE
+Provincia: Madrid`;
+
+    // ========== FUNCIONES ==========
+    function showView(name) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-' + name).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateInstPreview() {
+      const lang = document.getElementById('lang-inst').value;
+      const full = textosInst[lang];
+      // Mostrar solo las primeras ~4 líneas (aprox. 280 caracteres)
+      const preview = full.split('\n').slice(0, 5).join('\n') + (full.length > 300 ? '…' : '');
+      document.getElementById('preview-inst').textContent = preview;
+    }
+
+    function updatePhonePreview() {
+      const lang = document.getElementById('lang-phone').value;
+      document.getElementById('preview-phone').textContent = textosPhone[lang];
+    }
+
+    function copyText(type) {
+      let text = '';
+      let btnId = '';
+      if (type === 'inst') {
+        const lang = document.getElementById('lang-inst').value;
+        text = textosInst[lang];
+        btnId = 'btn-copy-inst';
+      } else
