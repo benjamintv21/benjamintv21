@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imotion Group - Gestor de Comunicaciones e Información Fiscal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom smooth scroll bar and transition utilities */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.25s ease-in-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased flex flex-col font-sans">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-500 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-brand-500/20">
+                    iM
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-none">I-MOTION GROUP</h1>
+                    <p class="text-xs text-slate-500 mt-0.5">Gestor de Comunicaciones Rápidas</p>
+                </div>
+            </div>
+            <div class="text-xs font-medium bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Panel Operativo
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
+
+        <!-- VISTA PRINCIPAL: 3 CASILLAS -->
+        <div id="main-view" class="fade-in space-y-6">
+            <div class="text-center max-w-2xl mx-auto mb-8">
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Atajos de Información y Plantillas</h2>
+                <p class="text-slate-600 mt-2 text-sm sm:text-base">Seleccione una tarjeta para acceder a la información fiscal o copiar comunicados oficiales en múltiples idiomas.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                
+                <!-- CASILLA 1: IMOTION CIF -->
+                <div onclick="openCifModal()" class="group relative bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-xl border border-slate-200/80 hover:border-brand-500 transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-blue-50 text-brand-600 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 group-hover:bg-brand-600 group-hover:text-white transition-all duration-300 shadow-inner">
+                            <i class="fa-solid font-bold fa-id-card"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition-colors">Imotion CIF</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed mb-4">
+                            Consulta y copia rápida de todos los datos fiscales completos de la empresa para facturación y contratos.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex items-center text-sm font-semibold text-brand-600 group-hover:text-brand-700">
+                        <span>Ver Datos Fiscales</span>
+                        <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- CASILLA 2: INSTALACIONES -->
+                <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-md border border-slate-200/80 flex flex-col justify-between transition-all duration-300">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shadow-inner">
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                            </div>
+                            <!-- Selector de idioma -->
+                            <div class="relative">
+                                <select id="lang-instalaciones" onchange="updateInstalacionesText()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer outline-none">
+                                    <option value="es" selected>🇪🇸 Español</option>
+                                    <option value="en">🇬🇧 English</option>
+                                    <option value="it">🇮🇹 Italiano</option>
+                                    <option value="pt">🇵🇹 Português</option>
+                                    <option value="fr">🇫🇷 Français</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="text-xl font-bold text-slate-900 mb-2">Instalaciones</h3>
+                        
+                        <!-- Vista Previa Texto (Corto) -->
+                        <div class="relative bg-slate-50 rounded-xl p-4 border border-slate-200/60 my-4">
+                            <div id="preview-instalaciones" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]">
+                                <!-- Inyectado dinámicamente -->
+                            </div>
+                            <div class="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none rounded-b-xl"></div>
+                        </div>
+                    </div>
+
+                    <button onclick="copyInstalacionesText(this)" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 group">
+                        <i class="fa-regular fa-copy group-hover:scale-110 transition-transform"></i>
+                        <span>Copiar Mensaje Completo</span>
+                    </button>
+                </div>
+
+                <!-- CASILLA 3: ATENCIÓN TELEFÓNICA -->
+                <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-md border border-slate-200/80 flex flex-col justify-between transition-all duration-300">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl shadow-inner">
+                                <i class="fa-solid fa-headset"></i>
+                            </div>
+                            <!-- Selector de idioma -->
+                            <div class="relative">
+                                <select id="lang-atencion" onchange="updateAtencionText()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer outline-none">
+                                    <option value="es" selected>🇪🇸 Español</option>
+                                    <option value="en">🇬🇧 English</option>
+                                    <option value="it">🇮🇹 Italiano</option>
+                                    <option value="pt">🇵🇹 Português</option>
+                                    <option value="fr">🇫🇷 Français</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="text-xl font-bold text-slate-900 mb-2">Atención telefónica</h3>
+                        
+                        <!-- Vista Previa Texto (Corto) -->
+                        <div class="relative bg-slate-50 rounded-xl p-4 border border-slate-200/60 my-4">
+                            <div id="preview-atencion" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]">
+                                <!-- Inyectado dinámicamente -->
+                            </div>
+                            <div class="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none rounded-b-xl"></div>
+                        </div>
+                    </div>
+
+                    <button onclick="copyAtencionText(this)" class="w-full mt-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-3 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 group">
+                        <i class="fa-regular fa-copy group-hover:scale-110 transition-transform"></i>
+                        <span>Copiar Mensaje Completo</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- VISTA DEDICADA: DATOS FISCALES IMOTION CIF (Oculta por defecto) -->
+        <div id="cif-view" class="hidden fade-in max-w-3xl mx-auto w-full">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+                <!-- Header del Panel Fiscal -->
+                <div class="bg-gradient-to-r from-brand-700 to-brand-600 px-6 sm:px-8 py-6 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-sm">
+                            <i class="fa-solid fa-building text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-bold">Datos Fiscales Oficiales</h2>
+                            <p class="text-brand-100 text-xs sm:text-sm">I-MOTION GROUP GLOBAL IBERICA SL</p>
+                        </div>
+                    </div>
+                    <button onclick="closeCifModal()" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-9 h-9 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Detalle con Letras Grandes y Legibles -->
+                <div class="p-6 sm:p-10 space-y-6 bg-slate-50/50">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                        
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2">
+                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Denominación Social</span>
+                            <p id="cif-denominacion" class="text-lg sm:text-xl font-extrabold text-slate-900">I-MOTION GROUP GLOBAL IBERICA SL.</p>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">NIF / CIF</span>
+                            <p id="cif-nif" class="text-xl sm:text-2xl font-black text-slate-900 tracking-wider">B86999273</p>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Código Postal</span>
+                            <p id="cif-cp" class="text-xl sm:text-2xl font-black text-slate-900 tracking-wider">28660</p>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2">
+                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Domicilio Social Actual</span>
+                            <p id="cif-domicilio" class="text-base sm:text-lg font-bold text-slate-800">
+                                CALLE LABRADORES (POL INDUSTRIAL PRADO DEL ESPINO), 13
+                            </p>
+                            <a href="https://maps.google.com/?q=CALLE+LABRADORES+13+BOADILLA+DEL+MONTE+28660+Madrid" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700 mt-2 gap-1 hover:underline">
+                                <i class="fa-solid fa-map-location-dot"></i> Ver en Google Maps
+                            </a>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Municipio</span>
+                            <p id="cif-municipio" class="text-lg font-bold text-slate-800">BOADILLA DEL MONTE</p>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Provincia</span>
+                            <p id="cif-provincia" class="text-lg font-bold text-slate-800">Madrid</p>
+                        </div>
+
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-4">
+                        <button onclick="closeCifModal()" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition-all text-center flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-arrow-left text-sm"></i>
+                            <span>Atrás</span>
+                        </button>
+                        
+                        <button onclick="copyCifData(this)" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold shadow-lg shadow-brand-500/25 transition-all text-center flex items-center justify-center gap-2.5">
+                            <i class="fa-regular fa-copy text-lg"></i>
+                            <span>Copiar Datos Fiscales</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Componente Toast de Notificación -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-800 flex items-center gap-3">
+            <div id="toast-icon-bg" class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <div>
+                <p id="toast-message" class="text-sm font-medium">¡Copiado al portapapeles!</p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
+            &copy; <span id="year"></span> I-Motion Group Global Ibérica S.L. Todos los derechos reservados.
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        /* DATOS MULTI-IDIOMA: INSTALACIONES */
+        const textInstalaciones = {
+            es: `Hola, soy Luis Miguel, técnico responsable de la instalación de su Shape Space.
+
+Para poder planificar la visita de la forma más eficiente, le agradecería que me facilitase fotografías del área de instalación, de la entrada y del plano de la estancia (si dispone de él). Además, si es posible, agradecería que nos enviase un vídeo del recorrido completo desde el punto donde se descargará la máquina hasta la habitación o espacio exacto donde se emplazará.
+
+Asimismo, le indico algunos aspectos clave a tener en cuenta para el día de la entrega y el montaje:
+
+• Permisos de la vía pública y aparcamiento: Corresponde al cliente gestionar con antelación los permisos necesarios en caso de que la descarga pueda interrumpir el tráfico o cortar la vía pública. Asimismo, es necesario reservar o asegurar un espacio de aparcamiento lo más cercano posible al acceso para poder desmontar la estructura ahí antes de traslados a su ubicación final.
+• Ayuda para el transporte: Se requerirá la asistencia de al menos una persona para mover las piezas más voluminosas durante la descarga y el acceso.
+• Gestión de residuos: La gestión y retirada de los embalajes sobrantes (incluyendo palés y la jaula de embalaje, que una vez desmontada genera aproximadamente 40 kg de madera) queda a cargo del cliente.
+
+Muchas gracias por su colaboración facilitando esta información antes de mi llegada. Quedo a su disposición si tiene cualquier duda.`,
+
+            en: `Hello, I am Luis Miguel, the technician responsible for the installation of your Shape Space.
+
+In order to plan the visit as efficiently as possible, I would appreciate it if you could provide me with photos of the installation area, the entrance, and the floor plan of the room (if available). Additionally, if possible, I would appreciate it if you could send us a video of the full route from the unloading point to the exact room or space where it will be installed.
+
+Also, please find below some key aspects to keep in mind for the delivery and assembly day:
+
+• Public road permits and parking: It is the client's responsibility to handle any necessary permits in advance if unloading might interrupt traffic or block public roads. It is also required to reserve or secure a parking space as close as possible to the access point to disassemble the structure there prior to moving it to its final location.
+• Transport assistance: The assistance of at least one person will be required to move the bulkier parts during unloading and access.
+• Waste management: The management and disposal of remaining packaging (including pallets and the packaging crate, which generates approximately 40 kg of wood once disassembled) is the responsibility of the client.
+
+Thank you very much for your cooperation in providing this information prior to my arrival. I remain at your disposal should you have any questions.`,
+
+            it: `Ciao, sono Luis Miguel, il tecnico responsable dell'installazione del suo Shape Space.
+
+Per poter pianificare la visita nel modo più efficiente possibile, le sarei grato se potesse fornirmi fotografie dell'area di installazione, dell'ingresso e della planimetria della stanza (se disponibile). Inoltre, se possibile, le sarei grato se potesse inviarci un video dell'intero percorso dal punto di scarico della macchina fino alla stanza o allo spazio esatto in cui verrà collocata.
+
+Inoltre, le indico alcuni aspetti chiave da tenere presente per il giorno della consegna e del montaggio:
+
+• Permessi di pubblica via e parcheggio: Spetta al cliente gestire in anticipo i permessi necessari nel caso in cui lo scarico possa interrompere il traffico o bloccare la strada pubblica. È inoltre necessario riservare o assicurare un posto auto il più vicino possibile all'accesso per smontare la struttura prima del trasferimento nella sua posizione finale.
+• Assistenza al trasporto: Sarà richiesta l'assistenza di almeno una persona per spostare i pezzi più ingombranti durante lo scarico e l'accesso.
+• Gestione dei rifiuti: La gestione e lo smaltimento degli imballaggi residui (inclusi i pallet e la gabbia di imballaggio, che una volta smontata genera circa 40 kg di legno) sono a carico del cliente.
+
+Molte grazie per la collaborazione nel fornirci queste informazioni prima del mio arrivo. Resto a sua disposizione per qualsiasi chiarimento.`,
+
+            pt: `Olá, sou o Luis Miguel, técnico responsável pela instalação do seu Shape Space.
+
+Para poder planear a visita da forma mais eficiente, agradecerias se me pudesse fornecer fotografias da área de instalação, da entrada e da planta do espaço (se disponível). Além disso, se possível, agradeceríamos que nos enviasse um vídeo do percurso completo desde o ponto onde a máquina será descarregada até à divisão ou espaço exato onde será instalada.
+
+Além disso, indico alguns aspetos chave a ter em conta para o dia da entrega e montagem:
+
+• Licenças de via pública e estacionamento: Cabe ao cliente gerir com antecedência as licenças necessárias caso a descarga possa interromper o trânsito ou cortar a via pública. Da mesma forma, é necessário reservar ou garantir um lugar de estacionamento o mais próximo possível do acesso para poder desmontar a estrutura antes de a trasladar para a sua localização final.
+• Ajuda no transporte: Será necessária a assistência de pelo menos uma pessoa para mover as peças mais volumosas durante a descarga e acesso.
+• Gestão de resíduos: A gestão e remoção das embalagens sobrantes (incluindo paletes e a gaiola de embalagem que, uma vez desmontada, gera aproximadamente 40 kg de madeira) fica a cargo do cliente.
+
+Muito obrigado pela sua colaboração ao disponibilizar estas informações antes da minha chegada. Fico à sua disposição se tiver qualquer dúvida.`,
+
+            fr: `Bonjour, je suis Luis Miguel, technicien responsable de l'installation de votre Shape Space.
+
+Afin de planifier la visite de la manière la plus efficace posible, je vous serais reconnaissant de bien vouloir me fournir des photos de la zone d'installation, de l'entrée et le plan de la pièce (si disponible). De plus, si posible, je vous serais reconnaissant de nous envoyer une vidéo du parcours complet depuis el point de déchargement de la machine jusqu'à la pièce ou l'emplacement exact où elle sera installée.
+
+De plus, voici quelques points clés a prendre en compte pour le jour de la livraison et del montage:
+
+• Autorisations de la voie publique et stationnement: Il incombe au client de gérer a l'avance les autorisations nécessaires si le déchargement risque d'interrompre la circulation ou de bloquer la voie publique. De même, il est nécessaire de réserver ou de sécuriser una place de stationnement la plus proche possible del accès afin de pouvoir démonter la structure avant de la transporter vers son emplacement final.
+• Aide au transport: L'assistance d'au moins una personne sera requise pour déplacer les pièces les plus volumineuses lors du déchargement et del accès.
+• Gestion des déchets: La gestion et l'élimination des emballages restants (y compris les palettes et la cage d'emballage qui, una fois démontée, génère environ 40 kg de bois) restent a la charge du client.
+
+Merci beaucoup pour votre collaboration en fournissant ces informations avant mon arrivée. Je reste a votre disposition pour toute question.`
+        };
+
+        /* DATOS MULTI-IDIOMA: ATENCIÓN TELEFÓNICA */
+        const textAtencion = {
+            es: `Hola, por favor, póngase en contacto con nuestro equipo de soporte técnico para resolver su problema a través de este número de WhatsApp: +1 555 801 6479.`,
+            en: `Hello, please contact our technical support team to resolve your issue via this WhatsApp number: +1 555 801 6479.`,
+            it: `Ciao, per favore contatta il nostro team di supporto tecnico per risolvere il tuo problema tramite questo numero di WhatsApp: +1 555 801 6479.`,
+            pt: `Olá, por favor, entre em contacto com a nossa equipa de suporte técnico para resolver o seu problema através deste número de WhatsApp: +1 555 801 6479.`,
+            fr: `Bonjour, veuillez contacter notre équipe de support technique pour résoudre votre problème via ce numéro WhatsApp: +1 555 801 6479.`
+        };
+
+        // Inicializar vistas previas
+        function updateInstalacionesText() {
+            const lang = document.getElementById('lang-instalaciones').value;
+            const fullText = textInstalaciones[lang];
+            document.getElementById('preview-instalaciones').innerText = fullText;
+        }
+
+        function updateAtencionText() {
+            const lang = document.getElementById('lang-atencion').value;
+            const fullText = textAtencion[lang];
+            document.getElementById('preview-atencion').innerText = fullText;
+        }
+
+        // Navegación modal CIF
+        function openCifModal() {
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('cif-view').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function closeCifModal() {
+            document.getElementById('cif-view').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Función portapapeles segura con fallback
+        function copyToClipboard(text, buttonEl, originalHtml) {
+            function handleSuccess() {
+                showToast("¡Texto copiado al portapapeles con éxito!");
+                if (buttonEl) {
+                    buttonEl.classList.add('bg-slate-800');
+                    buttonEl.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> <span>¡Copiado!</span>`;
+                    setTimeout(() => {
+                        buttonEl.classList.remove('bg-slate-800');
+                        buttonEl.innerHTML = originalHtml;
+                    }, 2000);
+                }
+            }
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(handleSuccess).catch(() => {
+                    fallbackCopy(text, handleSuccess);
+                });
+            } else {
+                fallbackCopy(text, handleSuccess);
+            }
+        }
+
+        function fallbackCopy(text, callback) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                if (callback) callback();
+            } catch (err) {
+                console.error('Error al copiar', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Copiar Datos Fiscales Formateados
+        function copyCifData(btn) {
+            const formattedData = `Denominación: I-MOTION GROUP GLOBAL IBERICA SL.
+NIF: B86999273
+Domicilio social actual: CALLE LABRADORES (POL INDUSTRIAL PRADO DEL ESPINO), 13
+Código Postal: 28660
+Municipio: BOADILLA DEL MONTE
+Provincia: Madrid`;
+            const origHtml = btn.innerHTML;
+            copyToClipboard(formattedData, btn, origHtml);
+        }
+
+        // Copiar Texto Completo Instalaciones
+        function copyInstalacionesText(btn) {
+            const lang = document.getElementById('lang-instalaciones').value;
+            const fullText = textInstalaciones[lang];
+            const origHtml = btn.innerHTML;
+            copyToClipboard(fullText, btn, origHtml);
+        }
+
+        // Copiar Texto Completo Atención Telefónica
+        function copyAtencionText(btn) {
+            const lang = document.getElementById('lang-atencion').value;
+            const fullText = textAtencion[lang];
+            const origHtml = btn.innerHTML;
+            copyToClipboard(fullText, btn, origHtml);
+        }
+
+        // Notificación Toast
+        let toastTimeout;
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            
+            toastMsg.textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // Cargar textos iniciales al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            updateInstalacionesText();
+            updateAtencionText();
+        });
+    </script>
+</body>
+</html>
