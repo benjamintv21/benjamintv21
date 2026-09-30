@@ -39,7 +39,7 @@
                         <th class="p-3 w-28">Modelo</th>
                         <th class="p-3 w-28">País</th>
                         <th class="p-3">Nombre</th>
-                        <th class="p-3"> de Entrega</th>
+                        <th class="p-3 min-w-[280px]">Dirección de Entrega</th>
                         <th class="p-3 text-center">Confirmado</th>
                         <th class="p-3">Teléfono</th>
                         <th class="p-3">F. Envío</th>
@@ -263,12 +263,12 @@
                 <td class="p-2">
                     <input type="text" value="${item.nombre || ''}" class="w-full p-1 border border-slate-300 rounded" placeholder="Nombre" onchange="actualizarCampo('${item.id}', 'nombre', this.value)">
                 </td>
-                <td class="p-2">
-                    <div class="flex items-center gap-1">
-                        <input type="text" value="${item.direccion || ''}" dir="rtl" class="inp-direccion w-full p-1 border border-slate-300 rounded text-left" placeholder="Dirección" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')">
-                        <a id="map-link-${item.id}" href="${urlMaps}" target="_blank" class="p-1 text-slate-500 hover:text-red-600 font-bold" title="Abrir en Google Maps">📍</a>
-                    </div>
-                </td>
+<td class="p-2 min-w-[280px]">
+    <div class="flex items-center gap-1 w-full">
+        <input type="text" value="${item.direccion || ''}" dir="rtl" class="inp-direccion w-full min-w-[240px] p-1 border border-slate-300 rounded text-left" placeholder="Dirección de entrega" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')">
+        <a id="map-link-${item.id}" href="${urlMaps}" target="_blank" class="p-1 text-slate-500 hover:text-red-600 font-bold shrink-0" title="Abrir en Google Maps">📍</a>
+    </div>
+</td>
                 <td class="p-2 text-center">
                     <input type="checkbox" ${item.confirmado ? 'checked' : ''} class="w-4 h-4 accent-indigo-600 rounded cursor-pointer" onchange="actualizarCampo('${item.id}', 'confirmado', this.checked)">
                 </td>
