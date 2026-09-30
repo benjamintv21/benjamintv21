@@ -32,7 +32,6 @@
         }
     </script>
     <style>
-        /* Custom smooth scroll bar and transition utilities */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -80,14 +79,14 @@
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
 
-        <!-- VISTA PRINCIPAL: 3 CASILLAS -->
+        <!-- VISTA PRINCIPAL: 4 CASILLAS -->
         <div id="main-view" class="fade-in space-y-6">
             <div class="text-center max-w-2xl mx-auto mb-8">
                 <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Atajos de Información y Plantillas</h2>
                 <p class="text-slate-600 mt-2 text-sm sm:text-base">Seleccione una tarjeta para acceder a la información fiscal o copiar comunicados oficiales en múltiples idiomas.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
                 
                 <!-- CASILLA 1: IMOTION CIF -->
                 <div onclick="openCifModal()" class="group relative bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-xl border border-slate-200/80 hover:border-brand-500 transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1">
@@ -113,7 +112,6 @@
                             <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shadow-inner">
                                 <i class="fa-solid fa-screwdriver-wrench"></i>
                             </div>
-                            <!-- Selector de idioma -->
                             <div class="relative">
                                 <select id="lang-instalaciones" onchange="updateInstalacionesText()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer outline-none">
                                     <option value="es" selected>🇪🇸 Español</option>
@@ -130,11 +128,8 @@
 
                         <h3 class="text-xl font-bold text-slate-900 mb-2">Instalaciones</h3>
                         
-                        <!-- Vista Previa Texto (Corto) -->
                         <div class="relative bg-slate-50 rounded-xl p-4 border border-slate-200/60 my-4">
-                            <div id="preview-instalaciones" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]">
-                                <!-- Inyectado dinámicamente -->
-                            </div>
+                            <div id="preview-instalaciones" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]"></div>
                             <div class="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none rounded-b-xl"></div>
                         </div>
                     </div>
@@ -152,7 +147,6 @@
                             <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl shadow-inner">
                                 <i class="fa-solid fa-headset"></i>
                             </div>
-                            <!-- Selector de idioma -->
                             <div class="relative">
                                 <select id="lang-atencion" onchange="updateAtencionText()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer outline-none">
                                     <option value="es" selected>🇪🇸 Español</option>
@@ -169,11 +163,8 @@
 
                         <h3 class="text-xl font-bold text-slate-900 mb-2">Atención telefónica</h3>
                         
-                        <!-- Vista Previa Texto (Corto) -->
                         <div class="relative bg-slate-50 rounded-xl p-4 border border-slate-200/60 my-4">
-                            <div id="preview-atencion" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]">
-                                <!-- Inyectado dinámicamente -->
-                            </div>
+                            <div id="preview-atencion" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]"></div>
                             <div class="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none rounded-b-xl"></div>
                         </div>
                     </div>
@@ -184,13 +175,29 @@
                     </button>
                 </div>
 
+                <!-- CASILLA 4: CONTACTO -->
+                <div onclick="openContactModal()" class="group relative bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-xl border border-slate-200/80 hover:border-green-500 transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 group-hover:bg-green-600 group-hover:text-white transition-all duration-300 shadow-inner">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:text-green-600 transition-colors">Contacto</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed mb-4">
+                            Número de teléfono, email y código QR de WhatsApp para contacto directo y rápido.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex items-center text-sm font-semibold text-green-600 group-hover:text-green-700">
+                        <span>Ver Contacto</span>
+                        <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
             </div>
         </div>
 
-        <!-- VISTA DEDICADA: DATOS FISCALES IMOTION CIF (Oculta por defecto) -->
+        <!-- VISTA CIF -->
         <div id="cif-view" class="hidden fade-in max-w-3xl mx-auto w-full">
             <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-                <!-- Header del Panel Fiscal -->
                 <div class="bg-gradient-to-r from-brand-700 to-brand-600 px-6 sm:px-8 py-6 text-white flex items-center justify-between">
                     <div class="flex items-center space-x-4">
                         <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-sm">
@@ -206,280 +213,87 @@
                     </button>
                 </div>
 
-                <!-- Detalle con Letras Grandes y Legibles -->
                 <div class="p-6 sm:p-10 space-y-6 bg-slate-50/50">
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                        
                         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2">
                             <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Denominación Social</span>
                             <p id="cif-denominacion" class="text-lg sm:text-xl font-extrabold text-slate-900">I-MOTION GROUP GLOBAL IBERICA SL.</p>
                         </div>
-
                         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                             <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">NIF / CIF</span>
                             <p id="cif-nif" class="text-xl sm:text-2xl font-black text-slate-900 tracking-wider">B86999273</p>
                         </div>
-
                         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                             <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Código Postal</span>
                             <p id="cif-cp" class="text-xl sm:text-2xl font-black text-slate-900 tracking-wider">28660</p>
                         </div>
-
                         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2">
                             <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Domicilio Social Actual</span>
-                            <p id="cif-domicilio" class="text-base sm:text-lg font-bold text-slate-800">
-                                CALLE LABRADORES, 13
-                            </p>
+                            <p id="cif-domicilio" class="text-base sm:text-lg font-bold text-slate-800">CALLE LABRADORES, 13</p>
                             <a href="https://maps.google.com/?q=CALLE+LABRADORES+13+BOADILLA+DEL+MONTE+28660+Madrid" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700 mt-2 gap-1 hover:underline">
                                 <i class="fa-solid fa-map-location-dot"></i> Ver en Google Maps
                             </a>
                         </div>
-
                         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                             <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Provincia</span>
                             <p id="cif-provincia" class="text-lg font-bold text-slate-800">Madrid</p>
                         </div>
-
                     </div>
 
-                    <!-- Botones de Acción -->
                     <div class="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-4">
                         <button onclick="closeCifModal()" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition-all text-center flex items-center justify-center gap-2">
                             <i class="fa-solid fa-arrow-left text-sm"></i>
                             <span>Atrás</span>
                         </button>
-                        
                         <button onclick="copyCifData(this)" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold shadow-lg shadow-brand-500/25 transition-all text-center flex items-center justify-center gap-2.5">
                             <i class="fa-regular fa-copy text-lg"></i>
                             <span>Copiar Datos Fiscales</span>
                         </button>
                     </div>
-
                 </div>
             </div>
         </div>
 
-    </main>
+        <!-- VISTA CONTACTO -->
+        <div id="contact-view" class="hidden fade-in max-w-lg mx-auto w-full">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-green-700 to-green-600 px-6 sm:px-8 py-6 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-sm">
+                            <i class="fa-brands fa-whatsapp text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-bold">Contacto</h2>
+                            <p class="text-green-100 text-xs sm:text-sm">WhatsApp directo</p>
+                        </div>
+                    </div>
+                    <button onclick="closeContactModal()" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-9 h-9 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
 
-    <!-- Componente Toast de Notificación -->
-    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-        <div class="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-800 flex items-center gap-3">
-            <div id="toast-icon-bg" class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
-                <i class="fa-solid fa-check"></i>
-            </div>
-            <div>
-                <p id="toast-message" class="text-sm font-medium">¡Copiado al portapapeles!</p>
-            </div>
-        </div>
-    </div>
+                <div class="p-6 sm:p-10 space-y-6 bg-slate-50/50">
+                    
+                    <!-- Número grande a todo el ancho -->
+                    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm text-center">
+                        <span class="text-xs font-bold text-green-600 uppercase tracking-wider block mb-3">Teléfono</span>
+                        <p class="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight break-all">
+                            +34 618 24 18 34
+                        </p>
+                    </div>
 
-    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
-            &copy; <span id="year"></span> I-Motion Group Global Ibérica S.L. Todos los derechos reservados.
-        </div>
-    </footer>
+                    <!-- QR -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
+                        <span class="text-xs font-bold text-green-600 uppercase tracking-wider block mb-4">Escanea para abrir WhatsApp</span>
+                        <img 
+                            src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fapi.whatsapp.com%2Fsend%3Fphone%3D34618241834%26text%3D%25F0%259F%2591%258B" 
+                            alt="QR WhatsApp" 
+                            class="w-52 h-52 sm:w-56 sm:h-56 rounded-xl border border-slate-100 shadow-inner"
+                            width="220"
+                            height="220"
+                        >
+                        <p class="text-xs text-slate-500 mt-4 text-center">Al escanear se abrirá WhatsApp con el mensaje 👋</p>
+                    </div>
 
-    <script>
-        document.getElementById('year').textContent = new Date().getFullYear();
-
-        /* DATOS MULTI-IDIOMA: INSTALACIONES */
-        const textInstalaciones = {
-            es: `Hola, soy Luis Miguel, técnico responsable de la instalación de su Shape Space, primeramente necesitaría que me confirme la dirección de entrega donde se instalará el dispositivo.
-
-Para poder planificar la visita de la forma más eficiente, le agradecería que me facilitase fotografías del área de instalación, de la entrada y del plano de la estancia (si dispone de él). Además, si es posible, agradecería que nos enviase un vídeo del recorrido completo desde el punto donde se descargará la máquina hasta la habitación o espacio exacto donde se emplazará.
-
-Asimismo, le indico algunos aspectos clave a tener en cuenta para el día de la entrega y el montaje:
-
-• Permisos de la vía pública y aparcamiento: Corresponde al cliente gestionar con antelación los permisos necesarios en caso de que la descarga pueda interrumpir el tráfico o cortar la vía pública. Asimismo, es necesario reservar o asegurar un espacio de aparcamiento lo más cercano posible al acceso para poder desmontar la estructura ahí antes de traslados a su ubicación final.
-• Ayuda para el transporte: Se requerirá la asistencia de al menos una persona para mover las piezas más voluminosas durante la descarga y el acceso, pueden ser necesarias dos personas dependiendo de la complejidad del acceso a la habitación dónde se instalará.
-• Gestión de residuos: La gestión y retirada de los embalajes sobrantes (incluyendo palés y la jaula de embalaje, que una vez desmontada genera aproximadamente 40 kg de madera) queda a cargo del cliente.
-
-Muchas gracias por su colaboración facilitando esta información antes de mi llegada. Quedo a su disposición si tiene cualquier duda.`,
-
-            en: `Hello, I’m Luis Miguel, the technician responsible for the installation of your Shape Space. First of all, I would need you to confirm the delivery address where the equipment will be installed.
-
-In order to plan the visit as efficiently as possible, I would be grateful if you could provide me with photographs of the installation area, the entrance and the floor plan of the premises (if available). In addition, if possible, we would appreciate it if you could send us a video showing the complete route from the point where the machine will be unloaded to the exact room or area where it will be installed.
-
-I would also like to highlight some important points to take into consideration for the delivery and installation day:
-
-• Public road and parking permits: It is the customer’s responsibility to arrange in advance any permits that may be required if the unloading process could disrupt traffic or temporarily block the public road. It is also necessary to reserve or secure a parking space as close as possible to the entrance, so that the structure can be dismantled there before being transported to its final location.
-
-• Assistance with moving the equipment: At least one person will be required to assist with moving the larger components during unloading and access to the premises. Depending on the complexity of the route to the room where the equipment will be installed, two people may be required.
-
-• Waste disposal: The management and removal of any remaining packaging materials (including pallets and the wooden packing crate, which, once dismantled, produces approximately 40 kg of wood waste) will be the customer’s responsibility.
-
-Thank you very much for your cooperation and for providing us with this information before my arrival. Please do not hesitate to contact me if you have any questions.`,
-
-            it: `Buongiorno, sono Luis Miguel, il tecnico responsabile dell’installazione del vostro Shape Space. Innanzitutto, avrei bisogno che mi confermasse l’indirizzo di consegna presso il quale verrà installato il dispositivo.
-
-Per poter pianificare la visita nel modo più efficiente possibile, le sarei grato se potesse fornirmi alcune fotografie dell’area di installazione, dell’ingresso e della pianta del locale (se disponibile). Inoltre, se possibile, le chiederei di inviarci un video che mostri l’intero percorso dal punto in cui verrà scaricata la macchina fino alla stanza o allo spazio esatto in cui verrà installata.
-
-Inoltre, le indico alcuni aspetti importanti da tenere in considerazione per il giorno della consegna e del montaggio:
-
-• Permessi per l’occupazione del suolo pubblico e parcheggio: È responsabilità del cliente occuparsi in anticipo dei permessi necessari nel caso in cui le operazioni di scarico possano interrompere il traffico o comportare la chiusura della strada. È inoltre necessario riservare o assicurare uno spazio per il parcheggio il più vicino possibile all’accesso, in modo da poter smontare la struttura in quel punto prima di trasportarla nella sua posizione definitiva.
-
-• Assistenza per il trasporto: Sarà necessaria la presenza di almeno una persona per aiutare a movimentare i componenti più voluminosi durante lo scarico e l’accesso ai locali. A seconda della complessità del percorso fino alla stanza in cui verrà installato il dispositivo, potrebbero essere necessarie due persone.
-
-• Gestione dei rifiuti: La gestione e lo smaltimento dei materiali di imballaggio rimanenti (compresi i pallet e la gabbia di imballaggio, che una volta smontata genera circa 40 kg di legno) sono a carico del cliente.
-
-Grazie mille per la collaborazione e per averci fornito queste informazioni prima del mio arrivo. Rimango a sua disposizione per qualsiasi dubbio o necessità di chiarimento.`,
-
-            pt: `Olá, sou o Luis Miguel, o técnico responsável pela instalação do vosso Shape Space. Em primeiro lugar, necessitaria que me confirmasse a morada de entrega onde o equipamento será instalado.
-
-Para poder planear a visita da forma mais eficiente possível, agradecia que me facultasse fotografias da área de instalação, da entrada e da planta do espaço (caso disponha dela). Além disso, se possível, agradecia que nos enviasse um vídeo de todo o percurso desde o ponto onde a máquina será descarregada até à divisão ou espaço exato onde será instalada.
-
-Gostaria também de indicar alguns aspetos importantes a ter em conta para o dia da entrega e da montagem:
-
-• Licenças para ocupação da via pública e estacionamento: É da responsabilidade do cliente tratar antecipadamente das licenças necessárias caso a descarga possa interromper o trânsito ou implicar o corte da via pública. É também necessário reservar ou garantir um espaço de estacionamento o mais próximo possível do acesso, de forma a permitir desmontar a estrutura nesse local antes de a transportar para a sua localização final.
-
-• Ajuda para o transporte: Será necessária a assistência de pelo menos uma pessoa para ajudar a movimentar as peças de maiores dimensões durante a descarga e o acesso ao local. Dependendo da complexidade do acesso à divisão onde será instalado o equipamento, poderão ser necessárias duas pessoas.
-
-• Gestão de resíduos: A gestão e remoção dos materiais de embalagem sobrantes (incluindo paletes e a estrutura de madeira da embalagem, que, depois de desmontada, gera aproximadamente 40 kg de madeira) ficará a cargo do cliente.
-
-Muito obrigado pela sua colaboração e por nos facultar estas informações antes da minha chegada. Fico à sua disposição caso tenha alguma dúvida.`,
-
-            fr: `Bonjour, je suis Luis Miguel, le technicien responsable de l’installation de votre Shape Space. Tout d’abord, j’aurais besoin que vous me confirmiez l’adresse de livraison où l’équipement sera installé.
-
-Afin de pouvoir planifier la visite de la manière la plus efficace possible, je vous serais reconnaissant de bien vouloir me transmettre des photos de la zone d’installation, de l’entrée ainsi que du plan des locaux (si vous en disposez). De plus, si possible, nous vous remercions de bien vouloir nous envoyer une vidéo montrant l’intégralité du parcours depuis le point où la machine sera déchargée jusqu’à la pièce ou l’espace précis où elle sera installée.
-
-Je souhaite également vous indiquer quelques points importants à prendre en compte pour le jour de la livraison et du montage :
-
-• Autorisations d’occupation de la voie publique et stationnement : Il appartient au client d’effectuer à l’avance les démarches nécessaires pour obtenir les autorisations requises si le déchargement est susceptible de perturber la circulation ou d’entraîner la fermeture temporaire de la voie publique. Il est également nécessaire de réserver ou de garantir une place de stationnement aussi proche que possible de l’accès, afin de pouvoir y démonter la structure avant de la transporter jusqu’à son emplacement définitif.
-
-• Aide au transport : L’assistance d’au moins une personne sera nécessaire pour déplacer les éléments les plus volumineux lors du déchargement et de l’accès aux locaux. Selon la complexité de l’accès à la pièce où l’équipement sera installé, deux personnes peuvent être nécessaires.
-
-• Gestion des déchets : La gestion et l’évacuation des matériaux d’emballage restants (y compris les palettes et la caisse en bois utilisée pour l’emballage, qui, une fois démontée, représente environ 40 kg de bois) sont à la charge du client.
-
-Merci beaucoup pour votre collaboration et pour nous avoir communiqué ces informations avant mon arrivée. Je reste à votre disposition pour toute question.`
-        };
-
-        /* DATOS MULTI-IDIOMA: ATENCIÓN TELEFÓNICA */
-        const textAtencion = {
-            es: `Hola, por favor, póngase en contacto con nuestro equipo de soporte técnico para resolver su problema a través de este número de WhatsApp: +34616432054`,
-            en: `Hello, please contact our technical support team to resolve your issue via this WhatsApp number: +1 555 801 6479.`,
-            it: `Ciao, per favore contatta il nostro team di supporto tecnico per risolvere il tuo problema tramite questo numero di WhatsApp: +15558016479`,
-            pt: `Olá, por favor, entre em contacto com a nossa equipa de suporte técnico para resolver o seu problema através deste número de WhatsApp: +15558016479`,
-            fr: `Bonjour, veuillez contacter notre équipe de support technique pour résoudre votre problème via ce numéro WhatsApp: +15558016479`
-        };
-
-        // Inicializar vistas previas
-        function updateInstalacionesText() {
-            const lang = document.getElementById('lang-instalaciones').value;
-            const fullText = textInstalaciones[lang];
-            document.getElementById('preview-instalaciones').innerText = fullText;
-        }
-
-        function updateAtencionText() {
-            const lang = document.getElementById('lang-atencion').value;
-            const fullText = textAtencion[lang];
-            document.getElementById('preview-atencion').innerText = fullText;
-        }
-
-        // Navegación modal CIF
-        function openCifModal() {
-            document.getElementById('main-view').classList.add('hidden');
-            document.getElementById('cif-view').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function closeCifModal() {
-            document.getElementById('cif-view').classList.add('hidden');
-            document.getElementById('main-view').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // Función portapapeles segura con fallback
-        function copyToClipboard(text, buttonEl, originalHtml) {
-            function handleSuccess() {
-                showToast("¡Texto copiado al portapapeles con éxito!");
-                if (buttonEl) {
-                    buttonEl.classList.add('bg-slate-800');
-                    buttonEl.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> <span>¡Copiado!</span>`;
-                    setTimeout(() => {
-                        buttonEl.classList.remove('bg-slate-800');
-                        buttonEl.innerHTML = originalHtml;
-                    }, 2000);
-                }
-            }
-
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(handleSuccess).catch(() => {
-                    fallbackCopy(text, handleSuccess);
-                });
-            } else {
-                fallbackCopy(text, handleSuccess);
-            }
-        }
-
-        function fallbackCopy(text, callback) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            textArea.style.top = "-999999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                if (callback) callback();
-            } catch (err) {
-                console.error('Error al copiar', err);
-            }
-            document.body.removeChild(textArea);
-        }
-
-        // Copiar Datos Fiscales Formateados
-        function copyCifData(btn) {
-            const formattedData = `Denominación: I-MOTION GROUP GLOBAL IBERICA SL.
-NIF: B86999273
-Domicilio social actual: CALLE LABRADORES (POL INDUSTRIAL PRADO DEL ESPINO), 13
-Código Postal: 28660
-Municipio: BOADILLA DEL MONTE
-Provincia: Madrid`;
-            const origHtml = btn.innerHTML;
-            copyToClipboard(formattedData, btn, origHtml);
-        }
-
-        // Copiar Texto Completo Instalaciones
-        function copyInstalacionesText(btn) {
-            const lang = document.getElementById('lang-instalaciones').value;
-            const fullText = textInstalaciones[lang];
-            const origHtml = btn.innerHTML;
-            copyToClipboard(fullText, btn, origHtml);
-        }
-
-        // Copiar Texto Completo Atención Telefónica
-        function copyAtencionText(btn) {
-            const lang = document.getElementById('lang-atencion').value;
-            const fullText = textAtencion[lang];
-            const origHtml = btn.innerHTML;
-            copyToClipboard(fullText, btn, origHtml);
-        }
-
-        // Notificación Toast
-        let toastTimeout;
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toast-message');
-            
-            toastMsg.textContent = message;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 2500);
-        }
-
-        // Cargar textos iniciales al cargar la página
-        window.addEventListener('DOMContentLoaded', () => {
-            updateInstalacionesText();
-            updateAtencionText();
-        });
-    </script>
-</body>
-</html>
+                    <!-- Email en letra grande y negrita -->
+                    <div class="bg-whit
