@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de Instalaciones</title>
+    <!-- Tailwind CSS CDN para estilos limpios y modernos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .concluido-row {
+            filter: grayscale(100%);
+            opacity: 0.6;
+            background-color: #f3f4f6 !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
+
+    <div class="max-w-[100%] mx-auto bg-white rounded-xl shadow-lg p-6">
+        <!-- Cabecera -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-200 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">📌 Organizador de Instalaciones</h1>
+                <p class="text-sm text-slate-500">Gestión de envíos e instalaciones conectada a Supabase</p>
+            </div>
+            <button id="btnNuevaLinea" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow transition duration-150 flex items-center gap-2">
+                <span>➕</span> Nueva Línea
+            </button>
+        </div>
+
+        <!-- Tabla -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[1200px]">
+                <thead>
+                    <tr class="bg-slate-800 text-white text-xs uppercase tracking-wider">
+                        <th class="p-3 rounded-tl-lg w-20">Presup.</th>
+                        <th class="p-3 w-28">Modelo</th>
+                        <th class="p-3 w-28">País</th>
+                        <th class="p-3">Nombre</th>
+                        <th class="p-3">Dirección de Entrega</th>
+                        <th class="p-3 text-center">Confirmado</th>
+                        <th class="p-3">Teléfono</th>
+                        <th class="p-3">F. Envío</th>
+                        <th class="p-3">F. Est. Llegada</th>
+                        <th class="p-3">F. Prev. Instalación</th>
+                        <th class="p-3 text-center">Concluido</th>
+                        <th class="p-3 text-center rounded-tr-lg">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCuerpo" class="divide-y divide-slate-200 text-sm">
+                    <!-- Las filas se cargarán dinámicamente desde Supabase -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. CONFIGURACIÓN DE SUPABASE
+        // ==========================================
+        const SUPABASE_URL = 'https://xgbgnofruzjrvfalckvl.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf';
+
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ==========================================
+        // 2. DÍAS LABORABLES POR PAÍS
+        // ==========================================
+        const PAISES_CONFIG = {
+            "Italia": { dias: 5, orden: 1 },
+            "España": { dias: 2, orden: 2 },
+            "Francia": { dias: 3, orden: 3 },
+            "Portugal": { dias: 3, orden: 4 },
+            "Marruecos": { dias: 5, orden: 5 },
+            "Túnez": { dias: 6, orden: 6 },
+            "Alemania": { dias: 5, orden: 7 },
+            "Bélgica": { dias: 5, orden: 8 },
+            "Holanda": { dias: 5, orden: 9 },
+            "Reino Unido": { dias: 5, orden: 10 },
+            "Suiza": { dias: 5, orden: 11 },
+            "Austria": { dias: 5, orden: 12 },
+            "Polonia": { dias: 8, orden: 13 }
+        };
+
+        // ==========================================
+        // 3. FUNCIONES AUXILIARES (Fechas, WhatsApp, Maps)
+        // ==========================================
+        
+        // Suma solo días laborables (excluye sábados y domingos)
+        function calcularFechaEstimada(fechaEnvioStr, diasLaborables) {
+            if (!fechaEnvioStr) return '';
+            let fecha = new Date(fechaEnvioStr);
+            let agregados = 0;
+            
+            while (agregados < diasLaborables) {
+                fecha.setDate(fecha.getDate() + 1);
+                // 0 = Domingo, 6 = Sábado
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) {
+                    agregados++;
+                }
+            }
+            return fecha.toISOString().split('T')[0];
+        }
+
+        function limpiarTelefono(tel) {
+            return (tel || '').replace(/[^0-9]/g, '');
+        }
+
+        // ==========================================
+        // 4. OPERACIONES CON SUPABASE
+        // ==========================================
+
+        async function cargarInstalaciones() {
+            const { data, error } = await db
+                .from('instalaciones')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Error al cargar datos:", error);
+                return;
+            }
+
+            const hoy = new Date();
+            const dosSemanasEnMs = 14 * 24 * 60 * 60 * 1000;
+
+            const tbody = document.getElementById('tablaCuerpo');
+            tbody.innerHTML = '';
+
+            for (const item of data) {
+                // Borrado automático tras 2 semanas de ser marcado como concluido
+                if (item.concluido && item.fecha_concluido) {
+                    const fechaConcluido = new Date(item.fecha_concluido);
+                    if (hoy - fechaConcluido >= dosSemanasEnMs) {
+                        await eliminarFila(item.id, true);
+                        continue;
+                    }
+                }
+                renderizarFila(item);
+            }
+        }
+
+        async function crearNuevaLinea() {
+            const nuevaInstalacion = {
+                presupuesto: '',
+                modelo: 'space',
+                pais: 'España',
+                nombre: '',
+                direccion: '',
+                confirmado: false,
+                telefono: '',
+                fecha_envio: null,
+                fecha_estimada: null,
+                fecha_instalacion: null,
+                concluido: false
+            };
+
+            const { data, error } = await db
+                .from('instalaciones')
+                .insert([nuevaInstalacion])
+                .select();
+
+            if (error) {
+                alert("Error al crear la nueva línea");
+                console.error(error);
+                return;
+            }
+
+            if (data && data.length > 0) {
+                renderizarFila(data[0]);
+            }
+        }
+
+        async function actualizarCampo(id, campo, valor) {
+            const updateObj = { [campo]: valor };
+
+            // Recalcular fecha estimada si cambia país o fecha de envío
+            if (campo === 'pais' || campo === 'fecha_envio') {
+                const rowElem = document.getElementById(`fila-${id}`);
+                const paisVal = campo === 'pais' ? valor : rowElem.querySelector('.sel-pais').value;
+                const envioVal = campo === 'fecha_envio' ? valor : rowElem.querySelector('.inp-envio').value;
+                
+                const dias = PAISES_CONFIG[paisVal] ? PAISES_CONFIG[paisVal].dias : 3;
+                const nuevaEstimada = calcularFechaEstimada(envioVal, dias);
+                
+                updateObj['fecha_estimada'] = nuevaEstimada || null;
+                rowElem.querySelector('.inp-estimada').value = nuevaEstimada;
+            }
+
+            // Registrar timestamp cuando se concluye
+            if (campo === 'concluido') {
+                updateObj['fecha_concluido'] = valor ? new Date().toISOString() : null;
+            }
+
+            const { error } = await db
+                .from('instalaciones')
+                .update(updateObj)
+                .eq('id', id);
+
+            if (error) console.error(`Error actualizando ${campo}:`, error);
+        }
+
+        async function eliminarFila(id, silencioso = false) {
+            if (!silencioso && !confirm("¿Seguro que deseas eliminar esta línea?")) return;
+
+            const { error } = await db
+                .from('instalaciones')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                console.error("Error al eliminar:", error);
+            } else {
+                const elem = document.getElementById(`fila-${id}`);
+                if (elem) elem.remove();
+            }
+        }
+
+        // ==========================================
+        // 5. RENDERIZADO EN EL DOM
+        // ==========================================
+
+        function renderizarFila(item) {
+            const tbody = document.getElementById('tablaCuerpo');
+            const tr = document.createElement('tr');
+            tr.id = `fila-${item.id}`;
+            tr.className = `hover:bg-slate-50 transition duration-150 ${item.concluido ? 'concluido-row' : ''}`;
+
+            // Generar Opciones del desplegable de países
+            let opcionesPaises = '';
+            Object.keys(PAISES_CONFIG).forEach(p => {
+                opcionesPaises += `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`;
+            });
+
+            // Generar Opciones del desplegable de modelo
+            const modelos = ['space', 'bike', 'mixto'];
+            const modeloActual = item.modelo || 'space';
+            let opcionesModelo = '';
+            modelos.forEach(m => {
+                opcionesModelo += `<option value="${m}" ${modeloActual === m ? 'selected' : ''}>${m}</option>`;
+            });
+
+            const telLimpio = limpiarTelefono(item.telefono);
+            const urlMaps = item.direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}` : '#';
+            const urlWsp = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            tr.innerHTML = `
+                <td class="p-2 w-20">
+                    <input type="text" value="${item.presupuesto || ''}" maxlength="6" class="inp-presupuesto w-20 p-1 border border-slate-300 rounded text-center" placeholder="Nº" onchange="actualizarCampo('${item.id}', 'presupuesto', this.value)">
+                </td>
+                <td class="p-2 w-28">
+                    <select class="sel-modelo w-28 p-1 border border-slate-300 rounded bg-white font-medium text-slate-700" onchange="actualizarCampo('${item.id}', 'modelo', this.value)">
+                        ${opcionesModelo}
+                    </select>
+                </td>
+                <td class="p-2 w-28">
+                    <select class="sel-pais w-28 p-1 border border-slate-300 rounded bg-white text-xs" onchange="actualizarCampo('${item.id}', 'pais', this.value)">
+                        ${opcionesPaises}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="text" value="${item.nombre || ''}" class="w-full p-1 border border-slate-300 rounded" placeholder="Nombre" onchange="actualizarCampo('${item.id}', 'nombre', this.value)">
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <input type="text" value="${item.direccion || ''}" class="inp-direccion w-full p-1 border border-slate-300 rounded" placeholder="Dirección" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')">
+                        <a id="map-link-${item.id}" href="${urlMaps}" target="_blank" class="p-1 text-slate-500 hover:text-red-600 font-bold" title="Abrir en Google Maps">📍</a>
+                    </div>
+                </td>
+                <td class="p-2 text-center">
+                    <input type="checkbox" ${item.confirmado ? 'checked' : ''} class="w-4 h-4 accent-indigo-600 rounded cursor-pointer" onchange="actualizarCampo('${item.id}', 'confirmado', this.checked)">
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <div id="tel-view-${item.id}" class="flex items-center gap-1 ${item.telefono ? '' : 'hidden'}">
+                            <a id="wsp-link-${item.id}" href="${urlWsp}" target="_blank" class="text-indigo-600 hover:underline font-mono text-xs">${item.telefono}</a>
+                            <button onclick="comenzarEdicionTel('${item.id}')" class="text-slate-500 hover:text-slate-800 p-1" title="Editar teléfono">✏️</button>
+                        </div>
+                        <div id="tel-edit-${item.id}" class="flex items-center gap-1 ${item.telefono ? 'hidden' : ''}">
+                            <input type="text" id="tel-input-${item.id}" value="${item.telefono || ''}" class="w-28 p-1 border border-slate-300 rounded text-xs" placeholder="Ej: 34600000000">
+                            <button onclick="guardarTel('${item.id}')" class="bg-indigo-600 text-white text-xs px-2 py-1 rounded">✔</button>
+                        </div>
+                    </div>
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_envio || ''}" class="inp-envio w-full p-1 border border-slate-300 rounded text-xs" onchange="actualizarCampo('${item.id}', 'fecha_envio', this.value)">
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_estimada || ''}" class="inp-estimada w-full p-1 border border-slate-300 rounded text-xs bg-slate-100" readonly title="Calculado automáticamente">
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_instalacion || ''}" class="w-full p-1 border border-slate-300 rounded text-xs" onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)">
+                </td>
+                <td class="p-2 text-center">
+                    <input type="checkbox" ${item.concluido ? 'checked' : ''} class="w-4 h-4 accent-green-600 rounded cursor-pointer" onchange="toggleConcluido('${item.id}', this.checked)">
+                </td>
+                <td class="p-2 text-center">
+                    <button onclick="eliminarFila('${item.id}')" class="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        }
+
+        // ==========================================
+        // 6. EVENTOS Y LÓGICA DE INTERFAZ
+        // ==========================================
+
+        function toggleConcluido(id, estado) {
+            const row = document.getElementById(`fila-${id}`);
+            if (estado) {
+                row.classList.add('concluido-row');
+            } else {
+                row.classList.remove('concluido-row');
+            }
+            actualizarCampo(id, 'concluido', estado);
+        }
+
+        function comenzarEdicionTel(id) {
+            document.getElementById(`tel-view-${id}`).classList.add('hidden');
+            document.getElementById(`tel-edit-${id}`).classList.remove('hidden');
+            document.getElementById(`tel-input-${id}`).focus();
+        }
+
+        function guardarTel(id) {
+            const input = document.getElementById(`tel-input-${id}`);
+            const val = input.value.trim();
+            const telLimpio = limpiarTelefono(val);
+
+            const wspLink = document.getElementById(`wsp-link-${id}`);
+            wspLink.innerText = val;
+            wspLink.href = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            document.getElementById(`tel-edit-${id}`).classList.add('hidden');
+            document.getElementById(`tel-view-${id}`).classList.remove('hidden');
+
+            actualizarCampo(id, 'telefono', val);
+        }
+
+        function actualizarLinks(id) {
+            const row = document.getElementById(`fila-${id}`);
+            const dir = row.querySelector('.inp-direccion').value;
+            const mapLink = document.getElementById(`map-link-${id}`);
+            mapLink.href = dir ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dir)}` : '#';
+        }
+
+        // Event Listeners
+        document.getElementById('btnNuevaLinea').addEventListener('click', crearNuevaLinea);
+
+        // Cargar registros al iniciar
+        window.addEventListener('DOMContentLoaded', cargarInstalaciones);
+    </script>
+</body>
+</html>
