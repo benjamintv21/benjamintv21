@@ -22,7 +22,7 @@
             background-color: #ffffff !important;
         }
 
-        /* Control de visibilidad para modo no-editor */
+        /* Control de visibilidad: Ocultar si NO se tiene la clase .es-editor */
         body:not(.es-editor) #btnToggleViajes,
         body:not(.es-editor) .btn-eliminar-fila {
             display: none !important;
@@ -46,7 +46,7 @@
                 </button>
                 <!-- Botón Mapa -->
                 <button id="btnAbrirMapa" onclick="abrirModalMapa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Mapa de Instalaciones">
-                    <span>🗺️️</span> Mapa
+                    <span>🗺️</span> Mapa
                 </button>
                 <!-- Botón Calendario -->
                 <button id="btnAbrirCalendario" onclick="abrirModalCalendario()" class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Calendario de Instalaciones">
@@ -141,7 +141,7 @@
                 <button onclick="cerrarModal('modalMapa')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
             </div>
             
-            <!-- Leyenda superior ajustada para visualización clara -->
+            <!-- Leyenda superior -->
             <div id="leyendaMapa" class="flex flex-wrap gap-2 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[50px] max-h-36 overflow-y-auto">
                 <!-- Las etiquetas se generarán dinámicamente aquí -->
             </div>
@@ -152,11 +152,11 @@
 
     <script>
         // ==========================================
-        // COMPROBACIÓN DE MODO EDITOR SEGÚN URL
+        // COMPROBACIÓN DE MODO EDITOR
         // ==========================================
-        const esEditor = window.location.pathname.endsWith('/editor') || 
-                         window.location.pathname.endsWith('/editor/') || 
-                         window.location.href.includes('/editor');
+        const params = new URLSearchParams(window.location.search);
+        // Soporta tanto 'nombre=editor' como 'nobre=editor' por si acaso
+        const esEditor = params.get('nombre') === 'editor' || params.get('nobre') === 'editor';
 
         if (esEditor) {
             document.body.classList.add('es-editor');
@@ -169,7 +169,6 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf';
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Paleta Arcoíris (Colores suaves para fondo de fila)
         const PALETA_ARCOIRIS = [
             { nombre: 'Rojo', hex: '#fecaca' },
             { nombre: 'Naranja', hex: '#ffedd5' },
@@ -275,7 +274,6 @@
             tbody.innerHTML = '';
             registrosCargados = [];
 
-            // Resetear visualmente el botón de Viajes superior
             const btnViajes = document.getElementById('btnToggleViajes');
             if (btnViajes) {
                 btnViajes.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
@@ -291,9 +289,7 @@
                     }
                 }
                 
-                // FORZAR VISTA POR DEFECTO al recargar
                 item.modo_viajes = false;
-                
                 item.color = obtenerColorAsignado(index);
                 registrosCargados.push(item);
                 renderizarFila(item);
@@ -452,13 +448,11 @@
                 return `
                     <td colspan="11" class="p-2">
                         <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
-                            <!-- Ciudad y Fecha (Día/Mes) -->
                             <div class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm shrink-0">
                                 <span>📍 ${ciudad}</span>
                                 <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
                             </div>
 
-                            <!-- Opciones de Viajes -->
                             <div class="flex items-center gap-3 shrink-0">
                                 ${renderizarBloqueViaje(item, 'vuelo_ida', 'Vuelo ida')}
                                 ${renderizarBloqueViaje(item, 'coche', 'Coche')}
@@ -466,7 +460,6 @@
                                 ${renderizarBloqueViaje(item, 'vuelo_vuelta', 'Vuelo vuelta')}
                             </div>
 
-                            <!-- Botón para volver a vista predeterminada -->
                             <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
                                 ↩ Datos Predeterminados
                             </button>
@@ -478,7 +471,6 @@
                 `;
             }
 
-            // VISTA PREDETERMINADA
             const mapLink = item.direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}` : '#';
             const telLimpio = limpiarTelefono(item.telefono);
             const wspLink = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
@@ -666,7 +658,7 @@
         }
 
         // ==========================================
-        // 7. MAPA CON PINES PERSONALIZADOS Y LEYENDA SUPERIOR
+        // 7. MAPA CON PINES PERSONALIZADOS
         // ==========================================
 
         function abrirModalMapa() {
