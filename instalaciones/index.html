@@ -155,7 +155,7 @@
         // COMPROBACIÓN DE MODO EDITOR
         // ==========================================
         const params = new URLSearchParams(window.location.search);
-        // Soporta tanto 'nombre=editor' como 'nobre=editor' por si acaso
+        // Soporta tanto 'nombre=editor' como 'nobre=editor'
         const esEditor = params.get('nombre') === 'editor' || params.get('nobre') === 'editor';
 
         if (esEditor) {
@@ -466,7 +466,7 @@
                         </div>
                     </td>
                     <td class="p-2 text-center shrink-0">
-                        <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                        <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️️</button>
                     </td>
                 `;
             }
@@ -838,7 +838,7 @@
             const telLimpio = limpiarTelefono(val);
 
             const wspLink = document.getElementById(`wsp-link-${id}`);
-            wspLink.innerText = val;
+            wspLink.innerText = val || 'Añadir';
             wspLink.href = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
 
             document.getElementById(`tel-edit-${id}`).classList.add('hidden');
