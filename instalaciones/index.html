@@ -21,6 +21,12 @@
         tr input, tr select {
             background-color: #ffffff !important;
         }
+
+        /* Control de visibilidad para modo no-editor */
+        body:not(.es-editor) #btnToggleViajes,
+        body:not(.es-editor) .btn-eliminar-fila {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
@@ -40,7 +46,7 @@
                 </button>
                 <!-- Botón Mapa -->
                 <button id="btnAbrirMapa" onclick="abrirModalMapa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Mapa de Instalaciones">
-                    <span>🗺️</span> Mapa
+                    <span>🗺️️</span> Mapa
                 </button>
                 <!-- Botón Calendario -->
                 <button id="btnAbrirCalendario" onclick="abrirModalCalendario()" class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Calendario de Instalaciones">
@@ -145,6 +151,17 @@
     </div>
 
     <script>
+        // ==========================================
+        // COMPROBACIÓN DE MODO EDITOR SEGÚN URL
+        // ==========================================
+        const esEditor = window.location.pathname.endsWith('/editor') || 
+                         window.location.pathname.endsWith('/editor/') || 
+                         window.location.href.includes('/editor');
+
+        if (esEditor) {
+            document.body.classList.add('es-editor');
+        }
+
         // ==========================================
         // 1. CONFIGURACIÓN DE SUPABASE Y COLORES
         // ==========================================
@@ -456,7 +473,7 @@
                         </div>
                     </td>
                     <td class="p-2 text-center shrink-0">
-                        <button onclick="eliminarFila('${item.id}')" class="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                        <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
                     </td>
                 `;
             }
@@ -523,7 +540,7 @@
                     <input type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleConcluido('${item.id}', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">
                 </td>
                 <td class="p-2 text-center">
-                    <button onclick="eliminarFila('${item.id}')" class="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                    <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
                 </td>
             `;
         }
