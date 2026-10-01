@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizador de Instalaciones</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Leaflet JS y CSS para el Mapa Gratuito (OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        .concluido-row {
+            filter: grayscale(100%);
+            opacity: 0.6;
+        }
+        /* Mantenimiento de fondo blanco en inputs/selects para contraste */
+        tr input, tr select {
+            background-color: #ffffff !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
+
+    <div class="max-w-[100%] mx-auto bg-white rounded-xl shadow-lg p-6">
+        <!-- Cabecera -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-200 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">📌 Organizador de Instalaciones</h1>
+                <p class="text-sm text-slate-500">Gestión de envíos e instalaciones conectada a Supabase</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <!-- Botón Viajes (A la izquierda de Mapa) -->
+                <button id="btnToggleViajes" onclick="toggleModoViajesGeneral()" class="bg-sky-600 hover:bg-sky-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Alternar Vista de Viajes">
+                    <span>✈️</span> Viajes
+                </button>
+                <!-- Botón Mapa -->
+                <button id="btnAbrirMapa" onclick="abrirModalMapa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Mapa de Instalaciones">
+                    <span>🗺️</span> Mapa
+                </button>
+                <!-- Botón Calendario -->
+                <button id="btnAbrirCalendario" onclick="abrirModalCalendario()" class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Calendario de Instalaciones">
+                    <span>📅</span> Calendario
+                </button>
+                <!-- Botón Nueva Línea -->
+                <button id="btnNuevaLinea" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow transition duration-150 flex items-center gap-2">
+                    <span>➕</span> Nueva Línea
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[1200px]">
+                <thead>
+                    <tr class="bg-slate-800 text-white text-xs uppercase tracking-wider">
+                        <th class="p-3 rounded-tl-lg w-20">Presup.</th>
+                        <th class="p-3 w-28">Modelo</th>
+                        <th class="p-3 w-28">País</th>
+                        <th class="p-3">Nombre</th>
+                        <th class="p-3 min-w-[280px]">Dirección de Entrega</th>
+                        <th class="p-3 text-center">Confirmado</th>
+                        <th class="p-3">Teléfono</th>
+                        <th class="p-3">F. Envío</th>
+                        <th class="p-3">F. Est. Llegada</th>
+                        <th class="p-3">F. Prev. Instalación</th>
+                        <th class="p-3 text-center">Concluido</th>
+                        <th class="p-3 text-center rounded-tr-lg">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCuerpo" class="divide-y divide-slate-200 text-sm">
+                    <!-- Las filas se cargarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR VIAJE -->
+    <div id="modalEditarViaje" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 id="tituloModalViaje" class="text-lg font-bold text-slate-800">Editar Detalle</h3>
+                <button onclick="cerrarModal('modalEditarViaje')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre</label>
+                    <input type="text" id="modalViajeNombre" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Ingrese nombre descriptivo">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Enlace / URL</label>
+                    <input type="text" id="modalViajeLink" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="https://ejemplo.com">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="cerrarModal('modalEditarViaje')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm font-medium hover:bg-slate-300">Cancelar</button>
+                <button onclick="guardarDetalleViajeModal()" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CALENDARIO -->
+    <div id="modalCalendario" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-xl font-bold text-slate-800">📅 Calendario de Instalaciones</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="cambiarMes(-1)" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 rounded font-bold">&lt;</button>
+                        <span id="mesAñoLabel" class="font-semibold text-slate-700 min-w-[120px] text-center"></span>
+                        <button onclick="cambiarMes(1)" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 rounded font-bold">&gt;</button>
+                    </div>
+                </div>
+                <button onclick="cerrarModal('modalCalendario')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs uppercase text-slate-500 mb-2">
+                <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+            </div>
+            <div id="diasCalendario" class="grid grid-cols-7 gap-1 bg-slate-200 p-1 rounded-lg">
+                <!-- Se genera mediante JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MAPA -->
+    <div id="modalMapa" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h2 class="text-xl font-bold text-slate-800">🗺️ Ubicación de Instalaciones</h2>
+                <button onclick="cerrarModal('modalMapa')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <!-- Leyenda superior ajustada para visualización clara -->
+            <div id="leyendaMapa" class="flex flex-wrap gap-2 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[50px] max-h-36 overflow-y-auto">
+                <!-- Las etiquetas se generarán dinámicamente aquí -->
+            </div>
+
+            <div id="mapaContenedor" class="w-full h-[450px] rounded-lg bg-slate-100"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. CONFIGURACIÓN DE SUPABASE Y COLORES
+        // ==========================================
+        const SUPABASE_URL = 'https://xgbgnofruzjrvfalckvl.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Paleta Arcoíris (Colores suaves para fondo de fila)
+        const PALETA_ARCOIRIS = [
+            { nombre: 'Rojo', hex: '#fecaca' },
+            { nombre: 'Naranja', hex: '#ffedd5' },
+            { nombre: 'Amarillo', hex: '#fef9c3' },
+            { nombre: 'Verde', hex: '#dcfce7' },
+            { nombre: 'Añil', hex: '#e0e7ff' },
+            { nombre: 'Azul', hex: '#dbeafe' },
+            { nombre: 'Violeta', hex: '#f3e8ff' }
+        ];
+
+        let registrosCargados = [];
+        let mapaLeaflet = null;
+        let fechaCalendarioActual = new Date();
+        const elementosOcultosMapa = new Set();
+        const marcadoresMapa = {};
+
+        let modoViajesGlobal = false;
+        let modalEdicionActual = { id: null, campo: null };
+
+        const PAISES_CONFIG = {
+            "Italia": { dias: 5, orden: 1 },
+            "España": { dias: 2, orden: 2 },
+            "Francia": { dias: 3, orden: 3 },
+            "Portugal": { dias: 3, orden: 4 },
+            "Marruecos": { dias: 5, orden: 5 },
+            "Túnez": { dias: 6, orden: 6 },
+            "Alemania": { dias: 5, orden: 7 },
+            "Bélgica": { dias: 5, orden: 8 },
+            "Holanda": { dias: 5, orden: 9 },
+            "Reino Unido": { dias: 5, orden: 10 },
+            "Suiza": { dias: 5, orden: 11 },
+            "Austria": { dias: 5, orden: 12 },
+            "Polonia": { dias: 8, orden: 13 }
+        };
+
+        // ==========================================
+        // 2. FUNCIONES AUXILIARES DE LÓGICA Y EXTRACCIÓN
+        // ==========================================
+
+        function obtenerColorAsignado(index) {
+            return PALETA_ARCOIRIS[index % PALETA_ARCOIRIS.length].hex;
+        }
+
+        function extraerCiudad(direccion) {
+            if (!direccion) return 'Sin Ciudad';
+            
+            const partes = direccion.split(',');
+            if (partes.length >= 2) {
+                let posibleCiudad = partes[partes.length - 2].trim();
+                posibleCiudad = posibleCiudad.replace(/\b\d{4,5}\b/g, '').trim();
+                posibleCiudad = posibleCiudad.replace(/\b[A-Z]{2}\b/g, '').trim();
+                
+                if (posibleCiudad) return posibleCiudad;
+            }
+            return partes[0].trim();
+        }
+
+        function calcularFechaEstimada(fechaEnvioStr, diasLaborables) {
+            if (!fechaEnvioStr) return '';
+            let fecha = new Date(fechaEnvioStr);
+            let agregados = 0;
+            while (agregados < diasLaborables) {
+                fecha.setDate(fecha.getDate() + 1);
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) agregados++;
+            }
+            return fecha.toISOString().split('T')[0];
+        }
+
+        function limpiarTelefono(tel) {
+            return (tel || '').replace(/[^0-9]/g, '');
+        }
+
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return 'Sin fecha';
+            const partes = fechaStr.split('-'); 
+            if (partes.length !== 3) return fechaStr;
+
+            const dia = partes[2];
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            return `${dia}-${meses[mesIndex] || ''}`;
+        }
+
+        // ==========================================
+        // 3. OPERACIONES SUPABASE
+        // ==========================================
+
+        async function cargarInstalaciones() {
+            const { data, error } = await db
+                .from('instalaciones')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error("Error al cargar datos:", error);
+                return;
+            }
+
+            const hoy = new Date();
+            const dosSemanasEnMs = 14 * 24 * 60 * 60 * 1000;
+
+            const tbody = document.getElementById('tablaCuerpo');
+            tbody.innerHTML = '';
+            registrosCargados = [];
+
+            // Resetear visualmente el botón de Viajes superior
+            const btnViajes = document.getElementById('btnToggleViajes');
+            if (btnViajes) {
+                btnViajes.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+                btnViajes.classList.add('bg-sky-600', 'hover:bg-sky-700');
+            }
+
+            data.forEach((item, index) => {
+                if (item.concluido && item.fecha_concluido) {
+                    const fechaConcluido = new Date(item.fecha_concluido);
+                    if (hoy - fechaConcluido >= dosSemanasEnMs) {
+                        eliminarFila(item.id, true);
+                        return;
+                    }
+                }
+                
+                // FORZAR VISTA POR DEFECTO al recargar
+                item.modo_viajes = false;
+                
+                item.color = obtenerColorAsignado(index);
+                registrosCargados.push(item);
+                renderizarFila(item);
+            });
+        }
+
+        async function crearNuevaLinea() {
+            const nuevaInstalacion = {
+                presupuesto: '',
+                modelo: 'space',
+                pais: 'España',
+                nombre: '',
+                direccion: '',
+                confirmado: false,
+                telefono: '',
+                fecha_envio: null,
+                fecha_estimada: null,
+                fecha_instalacion: null,
+                concluido: false,
+                modo_viajes: false,
+                vuelo_ida_chk: false, vuelo_ida_nombre: '', vuelo_ida_link: '',
+                coche_chk: false, coche_nombre: '', coche_link: '',
+                hotel_chk: false, hotel_nombre: '', hotel_link: '',
+                vuelo_vuelta_chk: false, vuelo_vuelta_nombre: '', vuelo_vuelta_link: ''
+            };
+
+            const { data, error } = await db
+                .from('instalaciones')
+                .insert([nuevaInstalacion])
+                .select();
+
+            if (error) {
+                alert("Error al crear la nueva línea");
+                return;
+            }
+
+            if (data && data.length > 0) {
+                const item = data[0];
+                item.color = obtenerColorAsignado(registrosCargados.length);
+                registrosCargados.push(item);
+                renderizarFila(item);
+            }
+        }
+
+        async function actualizarCampo(id, campo, valor) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) item[campo] = valor;
+
+            const updateObj = { [campo]: valor };
+
+            if (campo === 'pais' || campo === 'fecha_envio') {
+                const rowElem = document.getElementById(`fila-${id}`);
+                if (rowElem) {
+                    const paisVal = campo === 'pais' ? valor : (rowElem.querySelector('.sel-pais')?.value || 'España');
+                    const envioVal = campo === 'fecha_envio' ? valor : (rowElem.querySelector('.inp-envio')?.value || '');
+                    
+                    const dias = PAISES_CONFIG[paisVal] ? PAISES_CONFIG[paisVal].dias : 3;
+                    const nuevaEstimada = calcularFechaEstimada(envioVal, dias);
+                    
+                    updateObj['fecha_estimada'] = nuevaEstimada || null;
+                    const inpEstimada = rowElem.querySelector('.inp-estimada');
+                    if (inpEstimada) inpEstimada.value = nuevaEstimada;
+                    if (item) item.fecha_estimada = nuevaEstimada;
+                }
+            }
+
+            if (campo === 'concluido') {
+                updateObj['fecha_concluido'] = valor ? new Date().toISOString() : null;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+        }
+
+        async function eliminarFila(id, silencioso = false) {
+            if (!silencioso && !confirm("¿Seguro que deseas eliminar esta línea?")) return;
+
+            const { error } = await db.from('instalaciones').delete().eq('id', id);
+            if (!error) {
+                const elem = document.getElementById(`fila-${id}`);
+                if (elem) elem.remove();
+                registrosCargados = registrosCargados.filter(r => r.id !== id);
+            }
+        }
+
+        // ==========================================
+        // 4. RENDERIZADO EN TABLA Y LÓGICA DE VIAJES
+        // ==========================================
+
+        function toggleModoViajesGeneral() {
+            modoViajesGlobal = !modoViajesGlobal;
+            const btn = document.getElementById('btnToggleViajes');
+            if (modoViajesGlobal) {
+                btn.classList.remove('bg-sky-600', 'hover:bg-sky-700');
+                btn.classList.add('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+            } else {
+                btn.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+                btn.classList.add('bg-sky-600', 'hover:bg-sky-700');
+            }
+
+            registrosCargados.forEach(item => {
+                item.modo_viajes = modoViajesGlobal;
+                actualizarCampo(item.id, 'modo_viajes', modoViajesGlobal);
+                rerenderFilaContent(item.id);
+            });
+        }
+
+        function toggleModoViajesIndividual(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.modo_viajes = !item.modo_viajes;
+                actualizarCampo(id, 'modo_viajes', item.modo_viajes);
+                rerenderFilaContent(id);
+            }
+        }
+
+        function rerenderFilaContent(id) {
+            const tr = document.getElementById(`fila-${id}`);
+            const item = registrosCargados.find(r => r.id === id);
+            if (tr && item) {
+                tr.innerHTML = obtenerHTMLContenidoFila(item);
+            }
+        }
+
+        function renderizarBloqueViaje(item, clave, tituloDefault) {
+            const chk = item[`${clave}_chk`] || false;
+            const nombre = item[`${clave}_nombre`] || '';
+            const link = item[`${clave}_link`] || '';
+
+            let enlaceHTML = '';
+            if (nombre && link) {
+                enlaceHTML = `<a href="${link}" target="_blank" class="text-indigo-600 font-medium hover:underline truncate max-w-[120px]" title="${nombre}">${nombre}</a>`;
+            } else if (!nombre && link) {
+                enlaceHTML = `<a href="${link}" target="_blank" class="text-indigo-600 font-medium hover:underline truncate max-w-[120px]" title="${tituloDefault}">${tituloDefault}</a>`;
+            } else if (nombre && !link) {
+                enlaceHTML = `<span class="text-slate-800 font-medium truncate max-w-[120px]" title="${nombre}">${nombre}</span>`;
+            } else {
+                enlaceHTML = `<span class="text-slate-400 italic text-xs">${tituloDefault}</span>`;
+            }
+
+            return `
+                <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                    <input type="checkbox" ${chk ? 'checked' : ''} class="w-4 h-4 accent-indigo-600 rounded cursor-pointer shrink-0" onchange="actualizarCampo('${item.id}', '${clave}_chk', this.checked)">
+                    <div class="flex items-center gap-1 overflow-hidden">
+                        ${enlaceHTML}
+                        <button onclick="abrirModalViaje('${item.id}', '${clave}', '${tituloDefault}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar ${tituloDefault}">✏️</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function obtenerHTMLContenidoFila(item) {
+            if (item.modo_viajes) {
+                const ciudad = extraerCiudad(item.direccion);
+                const fechaFormateada = formatearFecha(item.fecha_instalacion);
+
+                return `
+                    <td colspan="11" class="p-2">
+                        <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                            <!-- Ciudad y Fecha (Día/Mes) -->
+                            <div class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm shrink-0">
+                                <span>📍 ${ciudad}</span>
+                                <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
+                            </div>
+
+                            <!-- Opciones de Viajes -->
+                            <div class="flex items-center gap-3 shrink-0">
+                                ${renderizarBloqueViaje(item, 'vuelo_ida', 'Vuelo ida')}
+                                ${renderizarBloqueViaje(item, 'coche', 'Coche')}
+                                ${renderizarBloqueViaje(item, 'hotel', 'Hotel')}
+                                ${renderizarBloqueViaje(item, 'vuelo_vuelta', 'Vuelo vuelta')}
+                            </div>
+
+                            <!-- Botón para volver a vista predeterminada -->
+                            <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
+                                ↩ Datos Predeterminados
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-2 text-center shrink-0">
+                        <button onclick="eliminarFila('${item.id}')" class="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                    </td>
+                `;
+            }
+
+            // VISTA PREDETERMINADA
+            const mapLink = item.direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}` : '#';
+            const telLimpio = limpiarTelefono(item.telefono);
+            const wspLink = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => 
+                `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`
+            ).join('');
+
+            return `
+                <td class="p-2">
+                    <input type="text" value="${item.presupuesto || ''}" onchange="actualizarCampo('${item.id}', 'presupuesto', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Presup.">
+                </td>
+                <td class="p-2">
+                    <select onchange="actualizarCampo('${item.id}', 'modelo', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                        <option value="space" ${item.modelo === 'space' ? 'selected' : ''}>SPACE</option>
+                        <option value="freedhome" ${item.modelo === 'freedhome' ? 'selected' : ''}>FREEDHOME</option>
+                    </select>
+                </td>
+                <td class="p-2">
+                    <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                        ${opcionesPaises}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="text" value="${item.nombre || ''}" onchange="actualizarCampo('${item.id}', 'nombre', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Nombre cliente">
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <input type="text" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion w-full p-1 border border-slate-300 rounded text-xs" placeholder="Dirección completa">
+                        <a id="map-link-${item.id}" href="${mapLink}" target="_blank" class="text-slate-600 hover:text-indigo-600 p-1" title="Ver en Google Maps">🗺️</a>
+                    </div>
+                </td>
+                <td class="p-2 text-center">
+                    <input type="checkbox" ${item.confirmado ? 'checked' : ''} onchange="actualizarCampo('${item.id}', 'confirmado', this.checked)" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
+                </td>
+                <td class="p-2">
+                    <div id="tel-view-${item.id}" class="flex items-center justify-between gap-1">
+                        <a id="wsp-link-${item.id}" href="${wspLink}" target="_blank" class="text-emerald-700 font-medium hover:underline text-xs truncate max-w-[100px]">${item.telefono || 'Añadir'}</a>
+                        <button onclick="comenzarEdicionTel('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs">✏️</button>
+                    </div>
+                    <div id="tel-edit-${item.id}" class="hidden flex items-center gap-1">
+                        <input id="tel-input-${item.id}" type="text" value="${item.telefono || ''}" class="w-full p-1 border border-slate-300 rounded text-xs">
+                        <button onclick="guardarTel('${item.id}')" class="bg-indigo-600 text-white text-xs px-1.5 py-1 rounded">✓</button>
+                    </div>
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_envio || ''}" onchange="actualizarCampo('${item.id}', 'fecha_envio', this.value)" class="inp-envio w-full p-1 border border-slate-300 rounded text-xs">
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_estimada || ''}" class="inp-estimada w-full p-1 border border-slate-300 rounded text-xs bg-slate-100" readonly>
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <input type="date" value="${item.fecha_instalacion || ''}" onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs">
+                        <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs px-1.5 py-1 rounded shadow" title="Configurar Viaje">✈️</button>
+                    </div>
+                </td>
+                <td class="p-2 text-center">
+                    <input type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleConcluido('${item.id}', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">
+                </td>
+                <td class="p-2 text-center">
+                    <button onclick="eliminarFila('${item.id}')" class="text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                </td>
+            `;
+        }
+
+        function renderizarFila(item) {
+            const tbody = document.getElementById('tablaCuerpo');
+            const tr = document.createElement('tr');
+            tr.id = `fila-${item.id}`;
+            tr.className = `transition duration-150 ${item.concluido ? 'concluido-row' : ''}`;
+            tr.style.backgroundColor = item.color;
+            tr.innerHTML = obtenerHTMLContenidoFila(item);
+            tbody.appendChild(tr);
+        }
+
+        // ==========================================
+        // 5. MODAL EDICIÓN CAMPOS DE VIAJE
+        // ==========================================
+
+        function abrirModalViaje(id, campo, titulo) {
+            modalEdicionActual = { id, campo };
+            const item = registrosCargados.find(r => r.id === id);
+            
+            document.getElementById('tituloModalViaje').innerText = `Editar ${titulo}`;
+            document.getElementById('modalViajeNombre').value = item[`${campo}_nombre`] || '';
+            document.getElementById('modalViajeLink').value = item[`${campo}_link`] || '';
+            
+            document.getElementById('modalEditarViaje').classList.remove('hidden');
+        }
+
+        async function guardarDetalleViajeModal() {
+            const { id, campo } = modalEdicionActual;
+            if (!id || !campo) return;
+
+            const nombreVal = document.getElementById('modalViajeNombre').value.trim();
+            const linkVal = document.getElementById('modalViajeLink').value.trim();
+
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item[`${campo}_nombre`] = nombreVal;
+                item[`${campo}_link`] = linkVal;
+            }
+
+            await db.from('instalaciones').update({
+                [`${campo}_nombre`]: nombreVal,
+                [`${campo}_link`]: linkVal
+            }).eq('id', id);
+
+            cerrarModal('modalEditarViaje');
+            rerenderFilaContent(id);
+        }
+
+        // ==========================================
+        // 6. CALENDARIO
+        // ==========================================
+
+        function abrirModalCalendario() {
+            document.getElementById('modalCalendario').classList.remove('hidden');
+            renderizarCalendario();
+        }
+
+        function cambiarMes(delta) {
+            fechaCalendarioActual.setMonth(fechaCalendarioActual.getMonth() + delta);
+            renderizarCalendario();
+        }
+
+        function renderizarCalendario() {
+            const contenedor = document.getElementById('diasCalendario');
+            contenedor.innerHTML = '';
+
+            const año = fechaCalendarioActual.getFullYear();
+            const mes = fechaCalendarioActual.getMonth();
+
+            const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            document.getElementById('mesAñoLabel').innerText = `${nombresMeses[mes]} ${año}`;
+
+            const primerDia = new Date(año, mes, 1);
+            const ultimoDia = new Date(año, mes + 1, 0);
+
+            let diaSemanaInicio = primerDia.getDay() - 1;
+            if (diaSemanaInicio === -1) diaSemanaInicio = 6;
+
+            for (let i = 0; i < diaSemanaInicio; i++) {
+                const divVacio = document.createElement('div');
+                divVacio.className = 'bg-white h-24 rounded-md';
+                contenedor.appendChild(divVacio);
+            }
+
+            for (let d = 1; d <= ultimoDia.getDate(); d++) {
+                const celda = document.createElement('div');
+                celda.className = 'bg-white h-24 rounded-md p-1 flex flex-col justify-between overflow-hidden text-xs border border-slate-100';
+
+                const fechaKey = `${año}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const instalacionesDelDia = registrosCargados.filter(item => item.fecha_instalacion === fechaKey);
+
+                const numDia = document.createElement('div');
+                numDia.className = 'font-bold text-slate-700 text-right pr-1';
+                numDia.innerText = d;
+                celda.appendChild(numDia);
+
+                const listaContenedor = document.createElement('div');
+                listaContenedor.className = 'flex-1 flex flex-col justify-center overflow-hidden';
+
+                if (instalacionesDelDia.length > 0) {
+                    instalacionesDelDia.forEach((item, idx) => {
+                        const bloque = document.createElement('div');
+                        bloque.className = 'flex items-center justify-center font-bold text-[10px] px-1 py-0.5 truncate rounded';
+                        bloque.style.backgroundColor = item.color;
+                        bloque.innerText = extraerCiudad(item.direccion);
+                        
+                        listaContenedor.appendChild(bloque);
+
+                        if (idx < instalacionesDelDia.length - 1) {
+                            const linea = document.createElement('hr');
+                            linea.className = 'border-t border-slate-400 my-0.5';
+                            listaContenedor.appendChild(linea);
+                        }
+                    });
+                }
+
+                celda.appendChild(listaContenedor);
+                contenedor.appendChild(celda);
+            }
+        }
+
+        // ==========================================
+        // 7. MAPA CON PINES PERSONALIZADOS Y LEYENDA SUPERIOR
+        // ==========================================
+
+        function abrirModalMapa() {
+            const modal = document.getElementById('modalMapa');
+            modal.classList.remove('hidden');
+
+            requestAnimationFrame(() => {
+                if (!mapaLeaflet) {
+                    mapaLeaflet = L.map('mapaContenedor').setView([40.4167, -3.7037], 5);
+                    
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Tiles &copy; Esri',
+                        maxZoom: 18
+                    }).addTo(mapaLeaflet);
+                }
+
+                mapaLeaflet.invalidateSize();
+                cargarMarcadoresMapa();
+            });
+        }
+
+        function toggleVisibilidadMapa(id) {
+            if (elementosOcultosMapa.has(id)) {
+                elementosOcultosMapa.delete(id);
+            } else {
+                elementosOcultosMapa.add(id);
+            }
+            actualizarEstadoMapa();
+        }
+
+        function actualizarEstadoMapa() {
+            registrosCargados.forEach(item => {
+                const etiqueta = document.getElementById(`etiqueta-mapa-${item.id}`);
+                const marcador = marcadoresMapa[item.id];
+
+                if (elementosOcultosMapa.has(item.id)) {
+                    if (etiqueta) {
+                        etiqueta.style.backgroundColor = '#e2e8f0';
+                        etiqueta.style.color = '#64748b';
+                        etiqueta.classList.add('grayscale', 'opacity-60', 'line-through');
+                    }
+                    if (marcador && mapaLeaflet.hasLayer(marcador)) {
+                        mapaLeaflet.removeLayer(marcador);
+                    }
+                } else {
+                    if (etiqueta) {
+                        etiqueta.style.backgroundColor = item.color;
+                        etiqueta.style.color = '#1e293b';
+                        etiqueta.classList.remove('grayscale', 'opacity-60', 'line-through');
+                    }
+                    if (marcador && !mapaLeaflet.hasLayer(marcador)) {
+                        mapaLeaflet.addLayer(marcador);
+                    }
+                }
+            });
+        }
+
+        async function cargarMarcadoresMapa() {
+            if (!mapaLeaflet) return;
+
+            Object.keys(marcadoresMapa).forEach(id => {
+                if (mapaLeaflet.hasLayer(marcadoresMapa[id])) {
+                    mapaLeaflet.removeLayer(marcadoresMapa[id]);
+                }
+                delete marcadoresMapa[id];
+            });
+
+            const leyendaContenedor = document.getElementById('leyendaMapa');
+            leyendaContenedor.innerHTML = '';
+
+            const registrosValidos = registrosCargados.filter(item => !item.concluido && item.direccion);
+
+            if (registrosValidos.length === 0) {
+                leyendaContenedor.innerHTML = '<span class="text-sm text-slate-400 italic">No hay instalaciones activas para mostrar en el mapa.</span>';
+                return;
+            }
+
+            registrosValidos.forEach(item => {
+                const ciudad = extraerCiudad(item.direccion);
+                const fechaFormateada = formatearFecha(item.fecha_instalacion);
+                const estaOculto = elementosOcultosMapa.has(item.id);
+
+                const etiqueta = document.createElement('div');
+                etiqueta.id = `etiqueta-mapa-${item.id}`;
+                etiqueta.className = `px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-slate-300 flex items-center gap-2 shrink-0 cursor-pointer select-none transition-all duration-200 hover:scale-105 ${estaOculto ? 'grayscale opacity-60 line-through' : ''}`;
+                etiqueta.style.backgroundColor = estaOculto ? '#e2e8f0' : item.color;
+                etiqueta.style.color = estaOculto ? '#64748b' : '#1e293b';
+                
+                etiqueta.onclick = () => toggleVisibilidadMapa(item.id);
+
+                etiqueta.innerHTML = `<span>📍 ${ciudad}</span> <span class="text-[11px] font-normal opacity-80">(${fechaFormateada})</span>`;
+                leyendaContenedor.appendChild(etiqueta);
+            });
+
+            for (const item of registrosValidos) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(item.direccion)}`);
+                    const data = await res.json();
+                    
+                    if (data && data.length > 0) {
+                        const lat = data[0].lat;
+                        const lon = data[0].lon;
+                        const ciudad = extraerCiudad(item.direccion);
+                        const fechaFormateada = formatearFecha(item.fecha_instalacion);
+
+                        const pinSvg = `
+                            <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="${item.color}" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.4));">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
+                                </svg>
+                            </div>`;
+
+                        const iconoColor = L.divIcon({
+                            className: '',
+                            html: pinSvg,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -30]
+                        });
+
+                        const marcador = L.marker([lat, lon], { icon: iconoColor }).bindPopup(`
+                            <div style="text-align: center; font-family: sans-serif;">
+                                <div style="background-color: ${item.color}; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-bottom: 4px; border: 1px solid #cbd5e1;">
+                                    ${ciudad}
+                                </div>
+                                <b>${item.nombre || 'Instalación'}</b><br>
+                                <small>${item.direccion}</small><br>
+                                <small><b>F. Instalación:</b> ${fechaFormateada}</small>
+                            </div>
+                        `);
+
+                        marcadoresMapa[item.id] = marcador;
+
+                        if (!elementosOcultosMapa.has(item.id)) {
+                            marcador.addTo(mapaLeaflet);
+                        }
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+
+                } catch (e) {
+                    console.error("Error al obtener coordenadas:", item.direccion, e);
+                }
+            }
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // ==========================================
+        // 8. EVENTOS E INTERFAZ
+        // ==========================================
+
+        function toggleConcluido(id, estado) {
+            const row = document.getElementById(`fila-${id}`);
+            if (estado) row.classList.add('concluido-row');
+            else row.classList.remove('concluido-row');
+            
+            actualizarCampo(id, 'concluido', estado);
+
+            if (!document.getElementById('modalMapa').classList.contains('hidden')) {
+                cargarMarcadoresMapa();
+            }
+        }
+
+        function comenzarEdicionTel(id) {
+            document.getElementById(`tel-view-${id}`).classList.add('hidden');
+            document.getElementById(`tel-edit-${id}`).classList.remove('hidden');
+            document.getElementById(`tel-input-${id}`).focus();
+        }
+
+        function guardarTel(id) {
+            const input = document.getElementById(`tel-input-${id}`);
+            const val = input.value.trim();
+            const telLimpio = limpiarTelefono(val);
+
+            const wspLink = document.getElementById(`wsp-link-${id}`);
+            wspLink.innerText = val;
+            wspLink.href = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            document.getElementById(`tel-edit-${id}`).classList.add('hidden');
+            document.getElementById(`tel-view-${id}`).classList.remove('hidden');
+
+            actualizarCampo(id, 'telefono', val);
+        }
+
+        function actualizarLinks(id) {
+            const row = document.getElementById(`fila-${id}`);
+            if (!row) return;
+            const inpDir = row.querySelector('.inp-direccion');
+            if (inpDir) {
+                const dir = inpDir.value;
+                const mapLink = document.getElementById(`map-link-${id}`);
+                if (mapLink) mapLink.href = dir ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dir)}` : '#';
+            }
+        }
+
+        document.getElementById('btnNuevaLinea').addEventListener('click', crearNuevaLinea);
+        window.addEventListener('DOMContentLoaded', cargarInstalaciones);
+    </script>
+</body>
+</html>
