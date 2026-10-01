@@ -12,22 +12,31 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <style>
-        .concluido-row {
-            filter: grayscale(100%);
-            opacity: 0.6;
-        }
-        /* Mantenimiento de fondo blanco en inputs/selects para contraste */
-        tr input, tr select {
-            background-color: #ffffff !important;
-        }
+<style>
+    .concluido-row {
+        filter: grayscale(100%);
+        opacity: 0.6;
+    }
+    /* Mantenimiento de fondo blanco en inputs/selects para contraste */
+    tr input, tr select {
+        background-color: #ffffff !important;
+    }
 
-        /* Control de visibilidad: Ocultar si NO se tiene la clase .es-editor */
-        body:not(.es-editor) #btnToggleViajes,
-        body:not(.es-editor) .btn-eliminar-fila {
-            display: none !important;
-        }
-    </style>
+    /* Ocultar elementos para el público general (cuando NO existe la clase .es-editor en <body>) */
+    body:not(.es-editor) #btnToggleViajes,
+    body:not(.es-editor) .btn-eliminar-fila,
+    body:not(.es-editor) .btn-viaje-individual,
+    body:not(.es-editor) .col-concluido {
+        display: none !important;
+    }
+
+    /* Estilo para los campos deshabilitados para el público general */
+    body:not(.es-editor) .inp-fecha-instalacion {
+        pointer-events: none;
+        background-color: #f1f5f9 !important; /* slate-100 */
+        color: #64748b;
+    }
+</style>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
 
@@ -66,6 +75,7 @@
                     <tr class="bg-slate-800 text-white text-xs uppercase tracking-wider">
                         <th class="p-3 rounded-tl-lg w-20">Presup.</th>
                         <th class="p-3 w-28">Modelo</th>
+						<th class="p-3 text-center col-concluido">Concluido</th>
                         <th class="p-3 w-28">País</th>
                         <th class="p-3">Nombre</th>
                         <th class="p-3 min-w-[280px]">Dirección de Entrega</th>
@@ -155,7 +165,7 @@
         // COMPROBACIÓN DE MODO EDITOR
         // ==========================================
         const params = new URLSearchParams(window.location.search);
-        // Soporta tanto 'nombre=editor' como 'nobre=editor'
+        // Soporta tanto 'nombre=editor' como 'nobre=editor' por si acaso
         const esEditor = params.get('nombre') === 'editor' || params.get('nobre') === 'editor';
 
         if (esEditor) {
@@ -440,102 +450,105 @@
             `;
         }
 
-        function obtenerHTMLContenidoFila(item) {
-            if (item.modo_viajes) {
-                const ciudad = extraerCiudad(item.direccion);
-                const fechaFormateada = formatearFecha(item.fecha_instalacion);
+function obtenerHTMLContenidoFila(item) {
+    if (item.modo_viajes) {
+        const ciudad = extraerCiudad(item.direccion);
+        const fechaFormateada = formatearFecha(item.fecha_instalacion);
 
-                return `
-                    <td colspan="11" class="p-2">
-                        <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
-                            <div class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm shrink-0">
-                                <span>📍 ${ciudad}</span>
-                                <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
-                            </div>
-
-                            <div class="flex items-center gap-3 shrink-0">
-                                ${renderizarBloqueViaje(item, 'vuelo_ida', 'Vuelo ida')}
-                                ${renderizarBloqueViaje(item, 'coche', 'Coche')}
-                                ${renderizarBloqueViaje(item, 'hotel', 'Hotel')}
-                                ${renderizarBloqueViaje(item, 'vuelo_vuelta', 'Vuelo vuelta')}
-                            </div>
-
-                            <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
-                                ↩ Datos Predeterminados
-                            </button>
-                        </div>
-                    </td>
-                    <td class="p-2 text-center shrink-0">
-                        <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️️</button>
-                    </td>
-                `;
-            }
-
-            const mapLink = item.direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}` : '#';
-            const telLimpio = limpiarTelefono(item.telefono);
-            const wspLink = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
-
-            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => 
-                `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`
-            ).join('');
-
-            return `
-                <td class="p-2">
-                    <input type="text" value="${item.presupuesto || ''}" onchange="actualizarCampo('${item.id}', 'presupuesto', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Presup.">
-                </td>
-                <td class="p-2">
-                    <select onchange="actualizarCampo('${item.id}', 'modelo', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs font-semibold">
-                        <option value="space" ${item.modelo === 'space' ? 'selected' : ''}>SPACE</option>
-                        <option value="freedhome" ${item.modelo === 'freedhome' ? 'selected' : ''}>FREEDHOME</option>
-                    </select>
-                </td>
-                <td class="p-2">
-                    <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
-                        ${opcionesPaises}
-                    </select>
-                </td>
-                <td class="p-2">
-                    <input type="text" value="${item.nombre || ''}" onchange="actualizarCampo('${item.id}', 'nombre', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Nombre cliente">
-                </td>
-                <td class="p-2">
-                    <div class="flex items-center gap-1">
-                        <input type="text" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion w-full p-1 border border-slate-300 rounded text-xs" placeholder="Dirección completa">
-                        <a id="map-link-${item.id}" href="${mapLink}" target="_blank" class="text-slate-600 hover:text-indigo-600 p-1" title="Ver en Google Maps">🗺️</a>
+        return `
+            <td colspan="11" class="p-2">
+                <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm shrink-0">
+                        <span>📍 ${ciudad}</span>
+                        <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
                     </div>
-                </td>
-                <td class="p-2 text-center">
-                    <input type="checkbox" ${item.confirmado ? 'checked' : ''} onchange="actualizarCampo('${item.id}', 'confirmado', this.checked)" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
-                </td>
-                <td class="p-2">
-                    <div id="tel-view-${item.id}" class="flex items-center justify-between gap-1">
-                        <a id="wsp-link-${item.id}" href="${wspLink}" target="_blank" class="text-emerald-700 font-medium hover:underline text-xs truncate max-w-[100px]">${item.telefono || 'Añadir'}</a>
-                        <button onclick="comenzarEdicionTel('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs">✏️</button>
+
+                    <div class="flex items-center gap-3 shrink-0">
+                        ${renderizarBloqueViaje(item, 'vuelo_ida', 'Vuelo ida')}
+                        ${renderizarBloqueViaje(item, 'coche', 'Coche')}
+                        ${renderizarBloqueViaje(item, 'hotel', 'Hotel')}
+                        ${renderizarBloqueViaje(item, 'vuelo_vuelta', 'Vuelo vuelta')}
                     </div>
-                    <div id="tel-edit-${item.id}" class="hidden flex items-center gap-1">
-                        <input id="tel-input-${item.id}" type="text" value="${item.telefono || ''}" class="w-full p-1 border border-slate-300 rounded text-xs">
-                        <button onclick="guardarTel('${item.id}')" class="bg-indigo-600 text-white text-xs px-1.5 py-1 rounded">✓</button>
-                    </div>
-                </td>
-                <td class="p-2">
-                    <input type="date" value="${item.fecha_envio || ''}" onchange="actualizarCampo('${item.id}', 'fecha_envio', this.value)" class="inp-envio w-full p-1 border border-slate-300 rounded text-xs">
-                </td>
-                <td class="p-2">
-                    <input type="date" value="${item.fecha_estimada || ''}" class="inp-estimada w-full p-1 border border-slate-300 rounded text-xs bg-slate-100" readonly>
-                </td>
-                <td class="p-2">
-                    <div class="flex items-center gap-1">
-                        <input type="date" value="${item.fecha_instalacion || ''}" onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs">
-                        <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs px-1.5 py-1 rounded shadow" title="Configurar Viaje">✈️</button>
-                    </div>
-                </td>
-                <td class="p-2 text-center">
-                    <input type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleConcluido('${item.id}', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">
-                </td>
-                <td class="p-2 text-center">
-                    <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
-                </td>
-            `;
-        }
+
+                    <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
+                        ↩ Datos Predeterminados
+                    </button>
+                </div>
+            </td>
+            <td class="p-2 text-center shrink-0">
+                <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+            </td>
+        `;
+    }
+
+    const mapLink = item.direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}` : '#';
+    const telLimpio = limpiarTelefono(item.telefono);
+    const wspLink = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+    let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => 
+        `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`
+    ).join('');
+
+    // Atributos dinámicos para proteger la fecha si no es editor
+    const attrFechaInstalacion = esEditor ? '' : 'readonly tabindex="-1"';
+
+    return `
+        <td class="p-2">
+            <input type="text" value="${item.presupuesto || ''}" onchange="actualizarCampo('${item.id}', 'presupuesto', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Presup.">
+        </td>
+        <td class="p-2">
+            <select onchange="actualizarCampo('${item.id}', 'modelo', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                <option value="space" ${item.modelo === 'space' ? 'selected' : ''}>SPACE</option>
+                <option value="freedhome" ${item.modelo === 'freedhome' ? 'selected' : ''}>FREEDHOME</option>
+            </select>
+        </td>
+        <td class="p-2">
+            <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                ${opcionesPaises}
+            </select>
+        </td>
+        <td class="p-2">
+            <input type="text" value="${item.nombre || ''}" onchange="actualizarCampo('${item.id}', 'nombre', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Nombre cliente">
+        </td>
+        <td class="p-2">
+            <div class="flex items-center gap-1">
+                <input type="text" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion w-full p-1 border border-slate-300 rounded text-xs" placeholder="Dirección completa">
+                <a id="map-link-${item.id}" href="${mapLink}" target="_blank" class="text-slate-600 hover:text-indigo-600 p-1" title="Ver en Google Maps">🗺️</a>
+            </div>
+        </td>
+        <td class="p-2 text-center">
+            <input type="checkbox" ${item.confirmado ? 'checked' : ''} onchange="actualizarCampo('${item.id}', 'confirmado', this.checked)" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
+        </td>
+        <td class="p-2">
+            <div id="tel-view-${item.id}" class="flex items-center justify-between gap-1">
+                <a id="wsp-link-${item.id}" href="${wspLink}" target="_blank" class="text-emerald-700 font-medium hover:underline text-xs truncate max-w-[100px]">${item.telefono || 'Añadir'}</a>
+                <button onclick="comenzarEdicionTel('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs">✏️</button>
+            </div>
+            <div id="tel-edit-${item.id}" class="hidden flex items-center gap-1">
+                <input id="tel-input-${item.id}" type="text" value="${item.telefono || ''}" class="w-full p-1 border border-slate-300 rounded text-xs">
+                <button onclick="guardarTel('${item.id}')" class="bg-indigo-600 text-white text-xs px-1.5 py-1 rounded">✓</button>
+            </div>
+        </td>
+        <td class="p-2">
+            <input type="date" value="${item.fecha_envio || ''}" onchange="actualizarCampo('${item.id}', 'fecha_envio', this.value)" class="inp-envio w-full p-1 border border-slate-300 rounded text-xs">
+        </td>
+        <td class="p-2">
+            <input type="date" value="${item.fecha_estimada || ''}" class="inp-estimada w-full p-1 border border-slate-300 rounded text-xs bg-slate-100" readonly>
+        </td>
+        <td class="p-2">
+            <div class="flex items-center gap-1">
+                <input type="date" value="${item.fecha_instalacion || ''}" ${attrFechaInstalacion} onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)" class="inp-fecha-instalacion w-full p-1 border border-slate-300 rounded text-xs">
+                <button onclick="toggleModoViajesIndividual('${item.id}')" class="btn-viaje-individual bg-sky-600 hover:bg-sky-700 text-white text-xs px-1.5 py-1 rounded shadow" title="Configurar Viaje">✈️</button>
+            </div>
+        </td>
+        <td class="p-2 text-center col-concluido">
+            <input type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleConcluido('${item.id}', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">
+        </td>
+        <td class="p-2 text-center">
+            <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+        </td>
+    `;
+}
 
         function renderizarFila(item) {
             const tbody = document.getElementById('tablaCuerpo');
@@ -838,7 +851,7 @@
             const telLimpio = limpiarTelefono(val);
 
             const wspLink = document.getElementById(`wsp-link-${id}`);
-            wspLink.innerText = val || 'Añadir';
+            wspLink.innerText = val;
             wspLink.href = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
 
             document.getElementById(`tel-edit-${id}`).classList.add('hidden');
