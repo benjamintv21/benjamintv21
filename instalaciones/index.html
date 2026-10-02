@@ -200,6 +200,35 @@
             { nombre: 'Violeta', hex: '#f3e8ff' }
         ];
 
+        // Dataset local de Numbeo extraído de secure.html
+        const NUMBEO_DATASET = [
+            // Italia
+            { city: "Rome, Italy", lat: 41.9028, lng: 12.4964, url: "https://www.numbeo.com/crime/in/Rome", daylight: 64.30, night: 36.20 },
+            { city: "Perugia, Italy", lat: 43.1107, lng: 12.3908, url: "https://www.numbeo.com/crime/in/Perugia-Italy", daylight: 72.10, night: 45.30 },
+            { city: "Florence, Italy", lat: 43.7696, lng: 11.2558, url: "https://www.numbeo.com/crime/in/Florence", daylight: 71.50, night: 42.80 },
+            { city: "Milan, Italy", lat: 45.4642, lng: 9.1900, url: "https://www.numbeo.com/crime/in/Milan", daylight: 58.40, night: 32.10 },
+            { city: "Naples, Italy", lat: 40.8518, lng: 14.2681, url: "https://www.numbeo.com/crime/in/Naples", daylight: 52.30, night: 28.40 },
+            { city: "Bologna, Italy", lat: 44.4949, lng: 11.3426, url: "https://www.numbeo.com/crime/in/Bologna", daylight: 66.80, night: 39.20 },
+            { city: "Turin, Italy", lat: 45.0703, lng: 7.6869, url: "https://www.numbeo.com/crime/in/Turin", daylight: 62.10, night: 35.60 },
+
+            // España
+            { city: "Madrid, Spain", lat: 40.4168, lng: -3.7038, url: "https://www.numbeo.com/crime/in/Madrid", daylight: 79.40, night: 61.20 },
+            { city: "Barcelona, Spain", lat: 41.3851, lng: 2.1734, url: "https://www.numbeo.com/crime/in/Barcelona", daylight: 68.20, night: 41.50 },
+            { city: "Valencia, Spain", lat: 39.4699, lng: -0.3763, url: "https://www.numbeo.com/crime/in/Valencia", daylight: 82.50, night: 65.30 },
+            { city: "Seville, Spain", lat: 37.3891, lng: -5.9845, url: "https://www.numbeo.com/crime/in/Seville", daylight: 78.10, night: 58.90 },
+
+            // Francia
+            { city: "Bordeaux, France", lat: 44.8378, lng: -0.5792, url: "https://www.numbeo.com/crime/in/Bordeaux", daylight: 70.86, night: 37.15 },
+            { city: "Paris, France", lat: 48.8566, lng: 2.3522, url: "https://www.numbeo.com/crime/in/Paris", daylight: 62.40, night: 34.80 },
+            { city: "Marseille, France", lat: 43.2965, lng: 5.3698, url: "https://www.numbeo.com/crime/in/Marseille", daylight: 48.20, night: 24.50 },
+
+            // Otros Internacionales
+            { city: "London, United Kingdom", lat: 51.5074, lng: -0.1278, url: "https://www.numbeo.com/crime/in/London", daylight: 65.10, night: 38.90 },
+            { city: "Berlin, Germany", lat: 52.5200, lng: 13.4050, url: "https://www.numbeo.com/crime/in/Berlin", daylight: 75.80, night: 52.10 },
+            { city: "Tokyo, Japan", lat: 35.6762, lng: 139.6503, url: "https://www.numbeo.com/crime/in/Tokyo", daylight: 92.30, night: 81.40 },
+            { city: "New York, NY, United States", lat: 40.7128, lng: -74.0060, url: "https://www.numbeo.com/crime/in/New-York", daylight: 68.50, night: 42.10 }
+        ];
+
         let registrosCargados = [];
         let mapaLeaflet = null;
         let fechaCalendarioActual = new Date();
@@ -279,11 +308,22 @@
             if (codigo === 0) return '☀️';
             if (codigo >= 1 && codigo <= 3) return '⛅';
             if (codigo >= 45 && codigo <= 48) return '🌫️';
-            if (codigo >= 51 && codigo <= 67) return '🌧️️';
+            if (codigo >= 51 && codigo <= 67) return '🌧';
             if (codigo >= 71 && codigo <= 77) return '❄️';
             if (codigo >= 80 && codigo <= 82) return '🌦️';
             if (codigo >= 95) return '🌩️';
             return '🌤️';
+        }
+
+        // Fórmula Haversine para cálculo exacto de distancia geográfica (Lógica secure.html)
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
 
         // ==========================================
@@ -704,15 +744,16 @@
         }
 
         // ==========================================
-        // 6. OBTENCIÓN DE WIDGETS (CLIMA Y NUMBEO)
+        // 6. OBTENCIÓN DE WIDGETS (CLIMA Y NUMBEO SECURE)
         // ==========================================
 
         async function cargarWidgetsDestino(item) {
             const contenedor = document.getElementById(`widget-info-${item.id}`);
             if (!contenedor) return;
 
-            const ciudad = extraerCiudad(item.direccion);
-            if (!ciudad || ciudad === 'Sin Ciudad') {
+            const direccionOCiudad = item.direccion || '';
+            const ciudad = extraerCiudad(direccionOCiudad);
+            if (!direccionOCiudad || ciudad === 'Sin Ciudad') {
                 contenedor.innerHTML = `<span class="text-slate-400 italic">Dirección requerida</span>`;
                 return;
             }
@@ -724,14 +765,17 @@
             }
 
             try {
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ciudad)}`);
+                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccionOCiudad)}`);
                 const geoData = await geoRes.json();
 
                 let htmlClima = '🌤️ N/A';
-                if (geoData && geoData.length > 0) {
-                    const lat = geoData[0].lat;
-                    const lon = geoData[0].lon;
+                let htmlNumbeo = '🚶‍♂️☀️ N/A 🌙 N/A';
 
+                if (geoData && geoData.length > 0) {
+                    const lat = parseFloat(geoData[0].lat);
+                    const lon = parseFloat(geoData[0].lon);
+
+                    // 1. Obtención de Clima
                     let fechaUrl = '';
                     if (item.fecha_instalacion) {
                         fechaUrl = `&start_date=${item.fecha_instalacion}&end_date=${item.fecha_instalacion}`;
@@ -748,30 +792,22 @@
 
                         htmlClima = `<span>${emoji}</span> <span>🌧️ ${probLluvia}%</span> <span class="text-blue-600 font-bold">${tMin}°C</span> / <span class="text-red-600 font-bold">${tMax}°C</span>`;
                     }
-                }
 
-                let htmlNumbeo = '🚶‍♂️☀️ N/A 🌙 N/A';
-                const ciudadFormateada = ciudad.charAt(0).toUpperCase() + ciudad.slice(1).toLowerCase();
-                const numbeoUrl = `https://es.numbeo.com/criminalidad/ciudad/${encodeURIComponent(ciudadFormateada)}`;
+                    // 2. Lógica de Seguridad (Numbeo Dataset & Haversine) según secure.html
+                    let puntoMasCercano = null;
+                    let menorDistancia = Infinity;
 
-                try {
-                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(numbeoUrl)}`;
-                    const numbeoRes = await fetch(proxyUrl);
-                    const numbeoData = await numbeoRes.json();
-
-                    if (numbeoData && numbeoData.contents) {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(numbeoData.contents, 'text/html');
-                        const tds = Array.from(doc.querySelectorAll('td.indexValueTd'));
-
-                        if (tds.length >= 8) {
-                            const valDia = tds[6].textContent.trim();
-                            const valNoche = tds[7].textContent.trim();
-                            htmlNumbeo = `<span>🚶‍♂️☀️ ${valDia}</span> <span class="ml-1">🌙 ${valNoche}</span>`;
+                    NUMBEO_DATASET.forEach(punto => {
+                        const dist = calcularDistancia(lat, lon, punto.lat, punto.lng);
+                        if (dist < menorDistancia) {
+                            menorDistancia = dist;
+                            puntoMasCercano = punto;
                         }
+                    });
+
+                    if (puntoMasCercano) {
+                        htmlNumbeo = `<a href="${puntoMasCercano.url}" target="_blank" class="hover:underline flex items-center gap-1" title="Punto Numbeo: ${puntoMasCercano.city} (a ${menorDistancia.toFixed(1)} km)"><span>🚶‍♂️☀️ ${puntoMasCercano.daylight}</span> <span class="ml-1">🌙 ${puntoMasCercano.night}</span></a>`;
                     }
-                } catch (e) {
-                    console.warn("No se pudo obtener datos de Numbeo para", ciudad, e);
                 }
 
                 const finalHTML = `
