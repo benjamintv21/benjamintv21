@@ -200,9 +200,11 @@
             { nombre: 'Violeta', hex: '#f3e8ff' }
         ];
 
-        // Dataset local de Numbeo extraído de secure.html
+        // Dataset ampliado de Numbeo integrando nodos regionales (de busq.html)
         const NUMBEO_DATASET = [
-            // Italia
+            // Italia (incluye nodos regionales cercanos como Palermo, Catania, Perugia)
+            { city: "Palermo, Italy", lat: 38.1157, lng: 13.3615, url: "https://www.numbeo.com/crime/in/Palermo", daylight: 61.20, night: 35.80 },
+            { city: "Catania, Italy", lat: 37.5079, lng: 15.0830, url: "https://www.numbeo.com/crime/in/Catania", daylight: 58.40, night: 30.10 },
             { city: "Rome, Italy", lat: 41.9028, lng: 12.4964, url: "https://www.numbeo.com/crime/in/Rome", daylight: 64.30, night: 36.20 },
             { city: "Perugia, Italy", lat: 43.1107, lng: 12.3908, url: "https://www.numbeo.com/crime/in/Perugia-Italy", daylight: 72.10, night: 45.30 },
             { city: "Florence, Italy", lat: 43.7696, lng: 11.2558, url: "https://www.numbeo.com/crime/in/Florence", daylight: 71.50, night: 42.80 },
@@ -210,6 +212,11 @@
             { city: "Naples, Italy", lat: 40.8518, lng: 14.2681, url: "https://www.numbeo.com/crime/in/Naples", daylight: 52.30, night: 28.40 },
             { city: "Bologna, Italy", lat: 44.4949, lng: 11.3426, url: "https://www.numbeo.com/crime/in/Bologna", daylight: 66.80, night: 39.20 },
             { city: "Turin, Italy", lat: 45.0703, lng: 7.6869, url: "https://www.numbeo.com/crime/in/Turin", daylight: 62.10, night: 35.60 },
+
+            // Polonia (incluye Cracovia, Katowice y Varsovia)
+            { city: "Krakow (Cracovia), Poland", lat: 50.0647, lng: 19.9450, url: "https://www.numbeo.com/crime/in/Krakow-Cracow", daylight: 83.50, night: 63.40 },
+            { city: "Katowice, Poland", lat: 50.2649, lng: 19.0238, url: "https://www.numbeo.com/crime/in/Katowice", daylight: 78.10, night: 55.20 },
+            { city: "Warsaw, Poland", lat: 52.2297, lng: 21.0122, url: "https://www.numbeo.com/crime/in/Warsaw", daylight: 81.90, night: 62.80 },
 
             // España
             { city: "Madrid, Spain", lat: 40.4168, lng: -3.7038, url: "https://www.numbeo.com/crime/in/Madrid", daylight: 79.40, night: 61.20 },
@@ -257,7 +264,7 @@
         const cacheWidgets = {};
 
         // ==========================================
-        // 2. FUNCIONES AUXILIARES DE LÓGICA
+        // 2. FUNCIONES AUXILIARES DE LÓGICA Y GEOCODIFICACIÓN
         // ==========================================
 
         function obtenerColorAsignado(index) {
@@ -315,7 +322,7 @@
             return '🌤️';
         }
 
-        // Fórmula Haversine para cálculo exacto de distancia geográfica (Lógica secure.html)
+        // Fórmula Haversine para cálculo exacto de distancia geográfica (de busq.html)
         function calcularDistancia(lat1, lon1, lat2, lon2) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -324,6 +331,51 @@
                       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        async function fetchNominatim(q) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}`;
+            const res = await fetch(url, { headers: { 'Accept-Language': 'es,en' } });
+            return await res.json();
+        }
+
+        // Estrategia de geocodificación progresiva con 3 niveles de Fallback (de busq.html)
+        async function geolocalizarConFallback(queryInput) {
+            if (!queryInput || !queryInput.trim()) return null;
+            const query = queryInput.trim();
+
+            try {
+                // Intento 1: Búsqueda exacta completa
+                let data = await fetchNominatim(query);
+
+                // Intento 2 (Fallback 1): Limpiar prefijos de calle y caracteres polacos/especiales, buscando por CP / Ciudad
+                if (!data || data.length === 0) {
+                    const fallbackQuery = query.replace(/^.*?(\d{2}-\d{3}|\d{4,5})?[\s,]+/i, '').trim();
+                    if (fallbackQuery && fallbackQuery !== query) {
+                        data = await fetchNominatim(fallbackQuery);
+                    }
+                }
+
+                // Intento 3 (Fallback 2): Extraer únicamente los dos últimos términos (ej: Ciudad, País)
+                if (!data || data.length === 0) {
+                    const partes = query.split(',');
+                    if (partes.length >= 2) {
+                        const ciudadPais = partes.slice(-2).join(',').trim();
+                        data = await fetchNominatim(ciudadPais);
+                    }
+                }
+
+                if (data && data.length > 0) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon),
+                        displayName: data[0].display_name
+                    };
+                }
+            } catch (err) {
+                console.error("Error en geolocalizarConFallback:", err);
+            }
+            return null;
         }
 
         // ==========================================
@@ -744,7 +796,7 @@
         }
 
         // ==========================================
-        // 6. OBTENCIÓN DE WIDGETS (CLIMA Y NUMBEO SECURE)
+        // 6. OBTENCIÓN DE WIDGETS (CLIMA Y NUMBEO SECURE CON FALLBACK)
         // ==========================================
 
         async function cargarWidgetsDestino(item) {
@@ -765,15 +817,15 @@
             }
 
             try {
-                const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccionOCiudad)}`);
-                const geoData = await geoRes.json();
+                // Integración de estrategia de geocodificación progresiva (Fallback)
+                const geoData = await geolocalizarConFallback(direccionOCiudad);
 
                 let htmlClima = '🌤️ N/A';
                 let htmlNumbeo = '🚶‍♂️☀️ N/A 🌙 N/A';
 
-                if (geoData && geoData.length > 0) {
-                    const lat = parseFloat(geoData[0].lat);
-                    const lon = parseFloat(geoData[0].lon);
+                if (geoData) {
+                    const lat = geoData.lat;
+                    const lon = geoData.lon;
 
                     // 1. Obtención de Clima
                     let fechaUrl = '';
@@ -793,7 +845,7 @@
                         htmlClima = `<span>${emoji}</span> <span>🌧️ ${probLluvia}%</span> <span class="text-blue-600 font-bold">${tMin}°C</span> / <span class="text-red-600 font-bold">${tMax}°C</span>`;
                     }
 
-                    // 2. Lógica de Seguridad (Numbeo Dataset & Haversine) según secure.html
+                    // 2. Lógica de Seguridad con NUMBEO_DATASET ampliado y fórmula Haversine
                     let puntoMasCercano = null;
                     let menorDistancia = Infinity;
 
@@ -989,7 +1041,7 @@
                 etiqueta.id = `etiqueta-mapa-${item.id}`;
                 etiqueta.className = `px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-slate-300 flex items-center gap-2 shrink-0 cursor-pointer select-none transition-all duration-200 hover:scale-105 ${estaOculto ? 'grayscale opacity-60 line-through' : ''}`;
                 etiqueta.style.backgroundColor = estaOculto ? '#e2e8f0' : item.color;
-                etiqueta.style.color = estaOculto ? '#64748b' : '#1e293b';
+                etiqueta.style.color = estaOculto ? '#1e293b' : '#1e293b';
                 
                 etiqueta.onclick = () => toggleVisibilidadMapa(item.id);
 
@@ -999,12 +1051,12 @@
 
             for (const item of registrosValidos) {
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(item.direccion)}`);
-                    const data = await res.json();
+                    // Geocodificación con resolución de fallos (Fallback)
+                    const dataGeo = await geolocalizarConFallback(item.direccion);
                     
-                    if (data && data.length > 0) {
-                        const lat = data[0].lat;
-                        const lon = data[0].lon;
+                    if (dataGeo) {
+                        const lat = dataGeo.lat;
+                        const lon = dataGeo.lon;
                         const ciudad = extraerCiudad(item.direccion);
                         const fechaFormateada = formatearFecha(item.fecha_instalacion);
 
