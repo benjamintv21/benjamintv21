@@ -108,13 +108,13 @@
                     <input type="text" id="modalViajeNombre" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Ingrese nombre descriptivo">
                 </div>
                 <div>
-                    <label id="labelModalViajeLink" class="block text-xs font-semibold text-slate-600 mb-1">Enlace / Ruta Local</label>
-                    <input type="text" id="modalViajeLink" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="https://ejemplo.com o file:///...">
+                    <label id="labelModalViajeLink" class="block text-xs font-semibold text-slate-600 mb-1">Enlace / URL</label>
+                    <input type="text" id="modalViajeLink" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="https://ejemplo.com">
                 </div>
-                <!-- Campo de Dirección exclusivo para Hotel -->
-                <div id="contenedorModalViajeDireccion" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Dirección del Hotel</label>
-                    <input type="text" id="modalViajeDireccion" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Calle, Número, Ciudad, País">
+                <!-- Tercer campo dinámico: Archivo Local (Vuelos) o Dirección (Hotel) -->
+                <div id="contenedorModalViajeTercerCampo">
+                    <label id="labelModalViajeTercero" class="block text-xs font-semibold text-slate-600 mb-1">Archivo Local</label>
+                    <input type="text" id="modalViajeTercero" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Ruta del archivo local">
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-6">
@@ -218,11 +218,10 @@
             "Polonia": { dias: 8, orden: 13 }
         };
 
-        // Cache para no saturar APIs externas
         const cacheWidgets = {};
 
         // ==========================================
-        // 2. FUNCIONES AUXILIARES DE LÓGICA Y EXTRACCIÓN
+        // 2. FUNCIONES AUXILIARES DE LÓGICA
         // ==========================================
 
         function obtenerColorAsignado(index) {
@@ -338,10 +337,10 @@
                 fecha_instalacion: null,
                 concluido: false,
                 modo_viajes: false,
-                vuelo_ida_chk: false, vuelo_ida_nombre: '', vuelo_ida_link: '',
+                vuelo_ida_chk: false, vuelo_ida_nombre: '', vuelo_ida_link: '', vuelo_ida_local: '',
                 coche_chk: false, coche_nombre: '', coche_link: '',
                 hotel_chk: false, hotel_nombre: '', hotel_link: '', hotel_direccion: '',
-                vuelo_vuelta_chk: false, vuelo_vuelta_nombre: '', vuelo_vuelta_link: ''
+                vuelo_vuelta_chk: false, vuelo_vuelta_nombre: '', vuelo_vuelta_link: '', vuelo_vuelta_local: ''
             };
 
             const { data, error } = await db
@@ -350,7 +349,8 @@
                 .select();
 
             if (error) {
-                alert("Error al crear la nueva línea");
+                console.error("Error al crear la nueva línea:", error);
+                alert("Error al crear la nueva línea. Comprueba que las columnas existan en Supabase.");
                 return;
             }
 
@@ -448,14 +448,22 @@
             const chk = item[`${clave}_chk`] || false;
             const nombre = item[`${clave}_nombre`] || '';
             const link = item[`${clave}_link`] || '';
+            const localPath = item[`${clave}_local`] || '';
             const hotelDireccion = item[`hotel_direccion`] || '';
 
             let destinoHref = '#';
-            
+
             if (clave === 'hotel') {
                 if (chk) {
                     const dirDestino = hotelDireccion || item.direccion;
                     destinoHref = dirDestino ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dirDestino)}` : '#';
+                } else {
+                    destinoHref = link || '#';
+                }
+            } else if (clave === 'vuelo_ida' || clave === 'vuelo_vuelta') {
+                if (chk) {
+                    // Si está palomiteado abre la ruta local
+                    destinoHref = localPath ? (localPath.startsWith('file://') ? localPath : `file:///${localPath}`) : '#';
                 } else {
                     destinoHref = link || '#';
                 }
@@ -503,7 +511,7 @@
 
                             <!-- Widgets de Tiempo y Seguridad -->
                             <div id="widget-info-${item.id}" class="flex items-center gap-2 text-xs bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
-                                <span class="text-slate-400 italic">Cargando datos de ciudad...</span>
+                                <span class="text-slate-400 italic">Cargando datos...</span>
                             </div>
 
                             <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
@@ -611,19 +619,21 @@
             document.getElementById('modalViajeNombre').value = item[`${campo}_nombre`] || '';
             document.getElementById('modalViajeLink').value = item[`${campo}_link`] || '';
             
-            const contDireccion = document.getElementById('contenedorModalViajeDireccion');
-            const labelLink = document.getElementById('labelModalViajeLink');
+            const contTercero = document.getElementById('contenedorModalViajeTercerCampo');
+            const labelTercero = document.getElementById('labelModalViajeTercero');
 
             if (campo === 'hotel') {
-                contDireccion.classList.remove('hidden');
-                document.getElementById('modalViajeDireccion').value = item[`hotel_direccion`] || '';
-                labelLink.innerText = 'Enlace / URL de la Reserva';
+                contTercero.classList.remove('hidden');
+                labelTercero.innerText = 'Dirección del Hotel';
+                document.getElementById('modalViajeTercero').value = item[`hotel_direccion`] || '';
+                document.getElementById('modalViajeTercero').placeholder = 'Calle, Número, Ciudad, País';
             } else if (campo === 'vuelo_ida' || campo === 'vuelo_vuelta') {
-                contDireccion.classList.add('hidden');
-                labelLink.innerText = 'Enlace / Ruta Local';
+                contTercero.classList.remove('hidden');
+                labelTercero.innerText = 'Ruta de Archivo Local';
+                document.getElementById('modalViajeTercero').value = item[`${campo}_local`] || '';
+                document.getElementById('modalViajeTercero').placeholder = 'Almacenamiento interno/.../archivo.jpg';
             } else {
-                contDireccion.classList.add('hidden');
-                labelLink.innerText = 'Ruta de archivo local';
+                contTercero.classList.add('hidden');
             }
             
             document.getElementById('modalEditarViaje').classList.remove('hidden');
@@ -635,6 +645,7 @@
 
             const nombreVal = document.getElementById('modalViajeNombre').value.trim();
             const linkVal = document.getElementById('modalViajeLink').value.trim();
+            const terceroVal = document.getElementById('modalViajeTercero').value.trim();
 
             const item = registrosCargados.find(r => r.id === id);
             const updateObj = {
@@ -648,9 +659,11 @@
             }
 
             if (campo === 'hotel') {
-                const dirVal = document.getElementById('modalViajeDireccion').value.trim();
-                updateObj['hotel_direccion'] = dirVal;
-                if (item) item['hotel_direccion'] = dirVal;
+                updateObj['hotel_direccion'] = terceroVal;
+                if (item) item['hotel_direccion'] = terceroVal;
+            } else if (campo === 'vuelo_ida' || campo === 'vuelo_vuelta') {
+                updateObj[`${campo}_local`] = terceroVal;
+                if (item) item[`${campo}_local`] = terceroVal;
             }
 
             await db.from('instalaciones').update(updateObj).eq('id', id);
@@ -709,7 +722,7 @@
                 }
 
                 // 3. Extracción de Numbeo mediante Proxy CORS
-                let htmlNumbeo = '🚶‍♂️☀️️ N/A 🌙 N/A';
+                let htmlNumbeo = '🚶‍♂️☀️ N/A 🌙 N/A';
                 const ciudadFormateada = ciudad.charAt(0).toUpperCase() + ciudad.slice(1).toLowerCase();
                 const numbeoUrl = `https://es.numbeo.com/criminalidad/ciudad/${encodeURIComponent(ciudadFormateada)}`;
 
@@ -724,7 +737,6 @@
                         const tds = Array.from(doc.querySelectorAll('td.indexValueTd'));
 
                         if (tds.length >= 8) {
-                            // Extraer los índices requeridos directamente
                             const valDia = tds[6].textContent.trim();
                             const valNoche = tds[7].textContent.trim();
                             htmlNumbeo = `<span>🚶‍♂️☀️ ${valDia}</span> <span class="ml-1">🌙 ${valNoche}</span>`;
