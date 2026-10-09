@@ -496,7 +496,9 @@
                 <td class="p-2">
                     <select onchange="actualizarCampo('${item.id}', 'modelo', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs font-semibold">
                         <option value="space" ${item.modelo === 'space' ? 'selected' : ''}>SPACE</option>
-                        <option value="freedhome" ${item.modelo === 'freedhome' ? 'selected' : ''}>FREEDHOME</option>
+                        <option value="bike" ${item.modelo === 'bike' ? 'selected' : ''}>BIKE</option>
+                        <option value="multiple" ${item.modelo === 'multiple' ? 'selected' : ''}>MULTIPLE</option>
+                        <option value="reparacion" ${item.modelo === 'reparacion' ? 'selected' : ''}>REPARACION</option>
                     </select>
                 </td>
                 <td class="p-2">
