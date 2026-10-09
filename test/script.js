@@ -1,1 +1,1171 @@
+       // ==========================================
+        // COMPROBACIÓN DE MODO EDITOR
+        // ==========================================
+        const params = new URLSearchParams(window.location.search);
+        const esEditor = params.get('nombre') === 'editor' || params.get('nobre') === 'editor';
 
+        if (esEditor) {
+            document.body.classList.add('es-editor');
+        }
+
+        // ==========================================
+        // 1. CONFIGURACIÓN DE SUPABASE Y COLORES
+        // ==========================================
+        const SUPABASE_URL = 'https://xgbgnofruzjrvfalckvl.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const PALETA_ARCOIRIS = [
+            { nombre: 'Rojo', hex: '#fecaca' },
+            { nombre: 'Naranja', hex: '#ffedd5' },
+            { nombre: 'Amarillo', hex: '#fef9c3' },
+            { nombre: 'Verde', hex: '#dcfce7' },
+            { nombre: 'Añil', hex: '#e0e7ff' },
+            { nombre: 'Azul', hex: '#dbeafe' },
+            { nombre: 'Violeta', hex: '#f3e8ff' }
+        ];
+
+        // Dataset ampliado de Numbeo integrando nodos regionales
+        const NUMBEO_DATASET = [
+            { city: "Palermo, Italy", lat: 38.1157, lng: 13.3615, url: "https://www.numbeo.com/crime/in/Palermo", daylight: 61.20, night: 35.80 },
+            { city: "Catania, Italy", lat: 37.5079, lng: 15.0830, url: "https://www.numbeo.com/crime/in/Catania", daylight: 58.40, night: 30.10 },
+            { city: "Rome, Italy", lat: 41.9028, lng: 12.4964, url: "https://www.numbeo.com/crime/in/Rome", daylight: 64.30, night: 36.20 },
+            { city: "Perugia, Italy", lat: 43.1107, lng: 12.3908, url: "https://www.numbeo.com/crime/in/Perugia-Italy", daylight: 72.10, night: 45.30 },
+            { city: "Florence, Italy", lat: 43.7696, lng: 11.2558, url: "https://www.numbeo.com/crime/in/Florence", daylight: 71.50, night: 42.80 },
+            { city: "Milan, Italy", lat: 45.4642, lng: 9.1900, url: "https://www.numbeo.com/crime/in/Milan", daylight: 58.40, night: 32.10 },
+            { city: "Naples, Italy", lat: 40.8518, lng: 14.2681, url: "https://www.numbeo.com/crime/in/Naples", daylight: 52.30, night: 28.40 },
+            { city: "Bologna, Italy", lat: 44.4949, lng: 11.3426, url: "https://www.numbeo.com/crime/in/Bologna", daylight: 66.80, night: 39.20 },
+            { city: "Turin, Italy", lat: 45.0703, lng: 7.6869, url: "https://www.numbeo.com/crime/in/Turin", daylight: 62.10, night: 35.60 },
+            { city: "Krakow (Cracovia), Poland", lat: 50.0647, lng: 19.9450, url: "https://www.numbeo.com/crime/in/Krakow-Cracow", daylight: 83.50, night: 63.40 },
+            { city: "Katowice, Poland", lat: 50.2649, lng: 19.0238, url: "https://www.numbeo.com/crime/in/Katowice", daylight: 78.10, night: 55.20 },
+            { city: "Warsaw, Poland", lat: 52.2297, lng: 21.0122, url: "https://www.numbeo.com/crime/in/Warsaw", daylight: 81.90, night: 62.80 },
+            { city: "Madrid, Spain", lat: 40.4168, lng: -3.7038, url: "https://www.numbeo.com/crime/in/Madrid", daylight: 79.40, night: 61.20 },
+            { city: "Barcelona, Spain", lat: 41.3851, lng: 2.1734, url: "https://www.numbeo.com/crime/in/Barcelona", daylight: 68.20, night: 41.50 },
+            { city: "Valencia, Spain", lat: 39.4699, lng: -0.3763, url: "https://www.numbeo.com/crime/in/Valencia", daylight: 82.50, night: 65.30 },
+            { city: "Seville, Spain", lat: 37.3891, lng: -5.9845, url: "https://www.numbeo.com/crime/in/Seville", daylight: 78.10, night: 58.90 },
+            { city: "Bordeaux, France", lat: 44.8378, lng: -0.5792, url: "https://www.numbeo.com/crime/in/Bordeaux", daylight: 70.86, night: 37.15 },
+            { city: "Paris, France", lat: 48.8566, lng: 2.3522, url: "https://www.numbeo.com/crime/in/Paris", daylight: 62.40, night: 34.80 },
+            { city: "Marseille, France", lat: 43.2965, lng: 5.3698, url: "https://www.numbeo.com/crime/in/Marseille", daylight: 48.20, night: 24.50 },
+            { city: "London, United Kingdom", lat: 51.5074, lng: -0.1278, url: "https://www.numbeo.com/crime/in/London", daylight: 65.10, night: 38.90 },
+            { city: "Berlin, Germany", lat: 52.5200, lng: 13.4050, url: "https://www.numbeo.com/crime/in/Berlin", daylight: 75.80, night: 52.10 },
+            { city: "Tokyo, Japan", lat: 35.6762, lng: 139.6503, url: "https://www.numbeo.com/crime/in/Tokyo", daylight: 92.30, night: 81.40 },
+            { city: "New York, NY, United States", lat: 40.7128, lng: -74.0060, url: "https://www.numbeo.com/crime/in/New-York", daylight: 68.50, night: 42.10 }
+        ];
+
+        let registrosCargados = [];
+        let mapaLeaflet = null;
+        let fechaCalendarioActual = new Date();
+        const elementosOcultosMapa = new Set();
+        const marcadoresMapa = {};
+
+        let modoViajesGlobal = false;
+        let modoEnviosGlobal = false;
+        let modalEdicionActual = { id: null, campo: null };
+        let modalNotaActual = { id: null };
+
+        const PAISES_CONFIG = {
+            "Italia": { dias: 5, orden: 1 },
+            "España": { dias: 2, orden: 2 },
+            "Francia": { dias: 3, orden: 3 },
+            "Portugal": { dias: 3, orden: 4 },
+            "Marruecos": { dias: 5, orden: 5 },
+            "Túnez": { dias: 6, orden: 6 },
+            "Alemania": { dias: 5, orden: 7 },
+            "Bélgica": { dias: 5, orden: 8 },
+            "Holanda": { dias: 5, orden: 9 },
+            "Reino Unido": { dias: 5, orden: 10 },
+            "Suiza": { dias: 5, orden: 11 },
+            "Austria": { dias: 5, orden: 12 },
+            "Polonia": { dias: 8, orden: 13 }
+        };
+
+        const cacheWidgets = {};
+
+        // ==========================================
+        // 2. FUNCIONES AUXILIARES DE LÓGICA Y GEOCODIFICACIÓN
+        // ==========================================
+
+        function obtenerColorAsignado(index) {
+            return PALETA_ARCOIRIS[index % PALETA_ARCOIRIS.length].hex;
+        }
+
+        function extraerCiudad(direccion) {
+            if (!direccion) return 'Sin Ciudad';
+            
+            const partes = direccion.split(',');
+            if (partes.length >= 2) {
+                let posibleCiudad = partes[partes.length - 2].trim();
+                posibleCiudad = posibleCiudad.replace(/\b\d{4,5}\b/g, '').trim();
+                posibleCiudad = posibleCiudad.replace(/\b[A-Z]{2}\b/g, '').trim();
+                
+                if (posibleCiudad) return posibleCiudad;
+            }
+            return partes[0].trim();
+        }
+
+        function calcularFechaEstimada(fechaEnvioStr, diasLaborables) {
+            if (!fechaEnvioStr) return '';
+            let fecha = new Date(fechaEnvioStr);
+            let agregados = 0;
+            while (agregados < diasLaborables) {
+                fecha.setDate(fecha.getDate() + 1);
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) agregados++;
+            }
+            return fecha.toISOString().split('T')[0];
+        }
+
+        function limpiarTelefono(tel) {
+            return (tel || '').replace(/[^0-9]/g, '');
+        }
+
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return 'Sin fecha';
+            const partes = fechaStr.split('-'); 
+            if (partes.length !== 3) return fechaStr;
+
+            const dia = partes[2];
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            return `${dia}-${meses[mesIndex] || ''}`;
+        }
+
+        function obtenerEmojiClima(codigo) {
+            if (codigo === 0) return '☀️';
+            if (codigo >= 1 && codigo <= 3) return '⛅';
+            if (codigo >= 45 && codigo <= 48) return '🌫️';
+            if (codigo >= 51 && codigo <= 67) return '🌧';
+            if (codigo >= 71 && codigo <= 77) return '❄️';
+            if (codigo >= 80 && codigo <= 82) return '🌦️';
+            if (codigo >= 95) return '🌩️';
+            return '🌤️';
+        }
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        async function fetchNominatim(q) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}`;
+            const res = await fetch(url, { headers: { 'Accept-Language': 'es,en' } });
+            return await res.json();
+        }
+
+        async function geolocalizarConFallback(queryInput) {
+            if (!queryInput || !queryInput.trim()) return null;
+            const query = queryInput.trim();
+
+            try {
+                let data = await fetchNominatim(query);
+
+                if (!data || data.length === 0) {
+                    const fallbackQuery = query.replace(/^.*?(\d{2}-\d{3}|\d{4,5})?[\s,]+/i, '').trim();
+                    if (fallbackQuery && fallbackQuery !== query) {
+                        data = await fetchNominatim(fallbackQuery);
+                    }
+                }
+
+                if (!data || data.length === 0) {
+                    const partes = query.split(',');
+                    if (partes.length >= 2) {
+                        const ciudadPais = partes.slice(-2).join(',').trim();
+                        data = await fetchNominatim(ciudadPais);
+                    }
+                }
+
+                if (data && data.length > 0) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon),
+                        displayName: data[0].display_name
+                    };
+                }
+            } catch (err) {
+                console.error("Error en geolocalizarConFallback:", err);
+            }
+            return null;
+        }
+
+        // ==========================================
+        // 3. OPERACIONES SUPABASE
+        // ==========================================
+
+        async function cargarInstalaciones() {
+            const { data, error } = await db
+                .from('instalaciones')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error("Error al cargar datos:", error);
+                return;
+            }
+
+            const hoy = new Date();
+            const dosSemanasEnMs = 14 * 24 * 60 * 60 * 1000;
+
+            const tbody = document.getElementById('tablaCuerpo');
+            tbody.innerHTML = '';
+            registrosCargados = [];
+
+            const btnViajes = document.getElementById('btnToggleViajes');
+            if (btnViajes) {
+                btnViajes.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+                btnViajes.classList.add('bg-sky-600', 'hover:bg-sky-700');
+            }
+
+            data.forEach((item, index) => {
+                if (item.concluido && item.fecha_concluido) {
+                    const fechaConcluido = new Date(item.fecha_concluido);
+                    if (hoy - fechaConcluido >= dosSemanasEnMs) {
+                        eliminarFila(item.id, true);
+                        return;
+                    }
+                }
+                
+                item.modo_viajes = false;
+                item.color = obtenerColorAsignado(index);
+                registrosCargados.push(item);
+                renderizarFila(item);
+            });
+        }
+
+        async function crearNuevaLinea() {
+            const nuevaInstalacion = {
+                presupuesto: '',
+                modelo: 'space',
+                pais: 'España',
+                nombre: '',
+                direccion: '',
+                confirmado: false,
+                telefono: '',
+                fecha_envio: null,
+                fecha_estimada: null,
+                fecha_instalacion: null,
+                concluido: false,
+                modo_viajes: false,
+                vuelo_ida_chk: false, vuelo_ida_nombre: '', vuelo_ida_link: '', vuelo_ida_local: '',
+                coche_chk: false, coche_nombre: '', coche_link: '',
+                hotel_chk: false, hotel_nombre: '', hotel_link: '', hotel_direccion: '',
+                vuelo_vuelta_chk: false, vuelo_vuelta_nombre: '', vuelo_vuelta_link: '', vuelo_vuelta_local: '',
+                envio_pme_track: '', envio_local: '', envio_telefono: '',
+                nota: ''
+            };
+
+            const { data, error } = await db
+                .from('instalaciones')
+                .insert([nuevaInstalacion])
+                .select();
+
+            if (error) {
+                console.error("Error al crear la nueva línea:", error);
+                alert("Error al crear la nueva línea. Asegúrate de haber ejecutado el SQL de migración en Supabase.");
+                return;
+            }
+
+            if (data && data.length > 0) {
+                const item = data[0];
+                item.color = obtenerColorAsignado(registrosCargados.length);
+                registrosCargados.push(item);
+                renderizarFila(item);
+            }
+        }
+
+        async function actualizarCampo(id, campo, valor) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) item[campo] = valor;
+
+            const updateObj = { [campo]: valor };
+
+            if (campo === 'pais' || campo === 'fecha_envio') {
+                const rowElem = document.getElementById(`fila-${id}`);
+                if (rowElem) {
+                    const paisVal = campo === 'pais' ? valor : (rowElem.querySelector('.sel-pais')?.value || 'España');
+                    const envioVal = campo === 'fecha_envio' ? valor : (rowElem.querySelector('.inp-envio')?.value || '');
+                    
+                    const dias = PAISES_CONFIG[paisVal] ? PAISES_CONFIG[paisVal].dias : 3;
+                    const nuevaEstimada = calcularFechaEstimada(envioVal, dias);
+                    
+                    updateObj['fecha_estimada'] = nuevaEstimada || null;
+                    const inpEstimada = rowElem.querySelector('.inp-estimada');
+                    if (inpEstimada) inpEstimada.value = nuevaEstimada;
+                    if (item) item.fecha_estimada = nuevaEstimada;
+                }
+            }
+
+            if (campo === 'concluido') {
+                updateObj['fecha_concluido'] = valor ? new Date().toISOString() : null;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+        }
+
+        async function eliminarFila(id, silencioso = false) {
+            if (!silencioso && !confirm("¿Seguro que deseas eliminar esta línea?")) return;
+
+            const { error } = await db.from('instalaciones').delete().eq('id', id);
+            if (!error) {
+                const elem = document.getElementById(`fila-${id}`);
+                if (elem) elem.remove();
+                registrosCargados = registrosCargados.filter(r => r.id !== id);
+            }
+        }
+
+        // ==========================================
+        // 4. RENDERIZADO EN TABLA Y VIAJES
+        // ==========================================
+
+        function toggleModoViajesGeneral() {
+            modoViajesGlobal = !modoViajesGlobal;
+            const btn = document.getElementById('btnToggleViajes');
+            if (modoViajesGlobal) {
+                btn.classList.remove('bg-sky-600', 'hover:bg-sky-700');
+                btn.classList.add('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+            } else {
+                btn.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+                btn.classList.add('bg-sky-600', 'hover:bg-sky-700');
+            }
+
+            registrosCargados.forEach(item => {
+                item.modo_viajes = modoViajesGlobal;
+                actualizarCampo(item.id, 'modo_viajes', modoViajesGlobal);
+                rerenderFilaContent(item.id);
+            });
+        }
+
+        function toggleModoViajesIndividual(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.modo_viajes = !item.modo_viajes;
+                actualizarCampo(id, 'modo_viajes', item.modo_viajes);
+                rerenderFilaContent(id);
+            }
+        }
+
+        function toggleModoEnviosGeneral() {
+            modoEnviosGlobal = !modoEnviosGlobal;
+            const btn = document.getElementById('btnToggleEnvios');
+            if (modoEnviosGlobal) {
+                btn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+                btn.classList.add('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
+            } else {
+                btn.classList.remove('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
+                btn.classList.add('bg-orange-600', 'hover:bg-orange-700');
+            }
+
+            registrosCargados.forEach(item => {
+                item.modo_envios = modoEnviosGlobal;
+                actualizarCampo(item.id, 'modo_envios', modoEnviosGlobal);
+                rerenderFilaContent(item.id);
+            });
+        }
+
+        function toggleModoEnviosIndividual(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.modo_envios = !item.modo_envios;
+                actualizarCampo(id, 'modo_envios', item.modo_envios);
+                rerenderFilaContent(id);
+            }
+        }
+
+        function rerenderFilaContent(id) {
+            const tr = document.getElementById(`fila-${id}`);
+            const item = registrosCargados.find(r => r.id === id);
+            if (tr && item) {
+                tr.innerHTML = obtenerHTMLContenidoFila(item);
+                actualizarBotonNota(id);
+                if (item.modo_viajes) {
+                    cargarWidgetsDestino(item);
+                }
+            }
+        }
+
+        function renderizarBloqueViaje(item, clave, tituloDefault) {
+            const chk = item[`${clave}_chk`] || false;
+            const nombre = (item[`${clave}_nombre`] || '').trim();
+            const link = (item[`${clave}_link`] || '').trim();
+            const hotelDireccion = (item[`hotel_direccion`] || '').trim();
+            const textoMostrar = nombre || tituloDefault;
+
+            let elementoTextoHTML = '';
+
+            // CASO 1: Campo sin ningún texto ni nombre (Vacio)
+            if (!nombre && !link && !(clave === 'hotel' && hotelDireccion)) {
+                elementoTextoHTML = `<span class="text-slate-400 opacity-60 text-xs font-medium truncate max-w-[120px] select-none pointer-events-none" title="Sin datos">${tituloDefault}</span>`;
+            } 
+            // CASO 2: Checkbox PALOMITEADO (Activado)
+            else if (chk) {
+                if (clave === 'vuelo_ida' || clave === 'vuelo_vuelta') {
+                    elementoTextoHTML = `<button onclick="abrirModalVerVuelo('${item.id}', '${clave}')" class="text-indigo-600 font-bold hover:underline truncate max-w-[120px] text-left text-xs" title="Ver detalles del vuelo">${textoMostrar}</button>`;
+                } else if (clave === 'hotel') {
+                    const dirDestino = hotelDireccion || item.direccion;
+                    const hotelHref = dirDestino ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dirDestino)}` : '#';
+                    elementoTextoHTML = `<a href="${hotelHref}" target="_blank" class="text-indigo-600 font-bold hover:underline truncate max-w-[120px] text-xs" title="${textoMostrar}">${textoMostrar}</a>`;
+                } else {
+                    // Coche
+                    const cocheHref = link || '#';
+                    elementoTextoHTML = link ? `<a href="${cocheHref}" target="_blank" class="text-indigo-600 font-bold hover:underline truncate max-w-[120px] text-xs" title="${textoMostrar}">${textoMostrar}</a>`
+                                             : `<span class="text-slate-800 font-semibold text-xs truncate max-w-[120px]">${textoMostrar}</span>`;
+                }
+            } 
+            // CASO 3: Checkbox NO Palomiteado -> Texto Simple en Negro
+            else {
+                if (link) {
+                    elementoTextoHTML = `<a href="${link}" target="_blank" class="text-slate-800 hover:text-indigo-600 font-medium hover:underline truncate max-w-[120px] text-xs" title="${textoMostrar}">${textoMostrar}</a>`;
+                } else {
+                    elementoTextoHTML = `<span class="text-slate-800 font-medium text-xs truncate max-w-[120px] select-text" title="${textoMostrar}">${textoMostrar}</span>`;
+                }
+            }
+
+            return `
+                <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                    <input type="checkbox" ${chk ? 'checked' : ''} class="w-4 h-4 accent-indigo-600 rounded cursor-pointer shrink-0" onchange="actualizarCampo('${item.id}', '${clave}_chk', this.checked); rerenderFilaContent('${item.id}')">
+                    <div class="flex items-center gap-1 overflow-hidden">
+                        ${elementoTextoHTML}
+                        <button onclick="abrirModalViaje('${item.id}', '${clave}', '${tituloDefault}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar ${tituloDefault}">✏️</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function obtenerHTMLContenidoFila(item) {
+            const mapLink = item.direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}` : '#';
+            const telLimpio = limpiarTelefono(item.telefono);
+            const wspLink = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            if (item.modo_envios) {
+                return obtenerHTMLFilaEnvios(item);
+            }
+
+            if (item.modo_viajes) {
+                const ciudad = extraerCiudad(item.direccion);
+                const fechaFormateada = formatearFecha(item.fecha_instalacion);
+
+                return `
+                    <td colspan="11" class="p-2">
+                        <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                                <a href="${mapLink}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-indigo-500 hover:text-indigo-600 transition" title="Ver en Google Maps">
+                                    <span>📍 ${ciudad}</span>
+                                    <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
+                                </a>
+                            </div>
+
+                            <div class="flex items-center gap-3 shrink-0">
+                                ${renderizarBloqueViaje(item, 'vuelo_ida', 'Vuelo ida')}
+                                ${renderizarBloqueViaje(item, 'coche', 'Coche')}
+                                ${renderizarBloqueViaje(item, 'hotel', 'Hotel')}
+                                ${renderizarBloqueViaje(item, 'vuelo_vuelta', 'Vuelo vuelta')}
+                            </div>
+
+                            <div id="widget-info-${item.id}" class="flex items-center gap-2 text-xs bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
+                                <span class="text-slate-400 italic">Cargando datos...</span>
+                            </div>
+
+                            <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
+                                ↩ Datos Predeterminados
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-2 text-center shrink-0">
+                        <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                    </td>
+                `;
+            }
+
+            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => 
+                `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`
+            ).join('');
+
+            const attrFechaInstalacion = esEditor ? '' : 'readonly tabindex="-1"';
+
+            return `
+                <td class="p-2 text-center">
+                    <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                </td>
+                <td class="p-2">
+                    <input type="text" value="${item.presupuesto || ''}" onchange="actualizarCampo('${item.id}', 'presupuesto', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Presup.">
+                </td>
+                <td class="p-2">
+                    <select onchange="actualizarCampo('${item.id}', 'modelo', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                        <option value="space" ${item.modelo === 'space' ? 'selected' : ''}>SPACE</option>
+                        <option value="freedhome" ${item.modelo === 'freedhome' ? 'selected' : ''}>FREEDHOME</option>
+                    </select>
+                </td>
+                <td class="p-2">
+                    <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                        ${opcionesPaises}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="text" value="${item.nombre || ''}" onchange="actualizarCampo('${item.id}', 'nombre', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Nombre cliente">
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <input type="text" dir="rtl" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion w-72 p-1 border border-slate-300 rounded text-xs text-left" placeholder="Dirección completa">
+                        <a id="map-link-${item.id}" href="${mapLink}" target="_blank" class="text-slate-600 hover:text-indigo-600 p-1" title="Ver en Google Maps">🗺️</a>
+                    </div>
+                </td>
+                <td class="p-2 text-center">
+                    <input type="checkbox" ${item.confirmado ? 'checked' : ''} onchange="actualizarCampo('${item.id}', 'confirmado', this.checked)" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
+                </td>
+                <td class="p-2">
+                    <div id="tel-view-${item.id}" class="flex items-center justify-between gap-1">
+                        <a id="wsp-link-${item.id}" href="${wspLink}" target="_blank" class="text-emerald-700 font-medium hover:underline text-xs truncate max-w-[100px]">${item.telefono || 'Añadir'}</a>
+                        <button onclick="comenzarEdicionTel('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs">✏️</button>
+                    </div>
+                    <div id="tel-edit-${item.id}" class="hidden flex items-center gap-1">
+                        <input id="tel-input-${item.id}" type="text" value="${item.telefono || ''}" class="w-full p-1 border border-slate-300 rounded text-xs">
+                        <button onclick="guardarTel('${item.id}')" class="bg-indigo-600 text-white text-xs px-1.5 py-1 rounded">✓</button>
+                    </div>
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_envio || ''}" onchange="actualizarCampo('${item.id}', 'fecha_envio', this.value)" class="inp-envio w-full p-1 border border-slate-300 rounded text-xs">
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_estimada || ''}" class="inp-estimada w-full p-1 border border-slate-300 rounded text-xs bg-slate-100" readonly>
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <input type="date" value="${item.fecha_instalacion || ''}" ${attrFechaInstalacion} onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)" class="inp-fecha-instalacion w-full p-1 border border-slate-300 rounded text-xs">
+                        <button onclick="toggleModoViajesIndividual('${item.id}')" class="btn-viaje-individual bg-sky-600 hover:bg-sky-700 text-white text-xs px-1.5 py-1 rounded shadow" title="Configurar Viaje">✈️</button>
+                    </div>
+                </td>
+                <td class="p-2 text-center col-concluido">
+                    <input type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleConcluido('${item.id}', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">
+                </td>
+                <td class="p-2 text-center">
+                    <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                </td>
+            `;
+        }
+
+        function obtenerHTMLFilaEnvios(item) {
+            const ciudad = extraerCiudad(item.direccion);
+            const fechaFormateada = formatearFecha(item.fecha_instalacion);
+            const pmeTrack = (item.envio_pme_track || '').trim();
+            const local = (item.envio_local || '').trim();
+            const telefono = (item.envio_telefono || '').trim();
+
+            return `
+                    <td colspan="11" class="p-2">
+                        <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-orange-500 hover:text-orange-600 transition" title="Ver en Google Maps">
+                                    <span>📍 ${ciudad}</span>
+                                    <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
+                                </a>
+                            </div>
+
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">PME:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${pmeTrack || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">Local:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${local || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">Tel:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[100px]">${telefono || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                        </div>
+
+                        <button onclick="toggleModoEnviosIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
+                            ↩ Datos Predeterminados
+                        </button>
+                    </div>
+                </td>
+                    <td class="p-2 text-center shrink-0">
+                        <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                    </td>
+            `;
+        }
+
+        function renderizarFila(item) {
+            const tbody = document.getElementById('tablaCuerpo');
+            const tr = document.createElement('tr');
+            tr.id = `fila-${item.id}`;
+            tr.className = `transition duration-150 ${item.concluido ? 'concluido-row' : ''}`;
+            tr.style.backgroundColor = item.color;
+            tr.innerHTML = obtenerHTMLContenidoFila(item);
+            tbody.appendChild(tr);
+
+            actualizarBotonNota(item.id);
+
+            if (item.modo_viajes) {
+                cargarWidgetsDestino(item);
+            }
+        }
+
+        // ==========================================
+        // 5. MODALES DE EDICIÓN Y VISUALIZACIÓN DE VUELO
+        // ==========================================
+
+        function abrirModalViaje(id, campo, titulo) {
+            modalEdicionActual = { id, campo };
+            const item = registrosCargados.find(r => r.id === id);
+            
+            document.getElementById('tituloModalViaje').innerText = `Editar ${titulo}`;
+            document.getElementById('modalViajeNombre').value = item[`${campo}_nombre`] || '';
+            document.getElementById('modalViajeLink').value = item[`${campo}_link`] || '';
+            
+            const contTercero = document.getElementById('contenedorModalViajeTercerCampo');
+            const labelTercero = document.getElementById('labelModalViajeTercero');
+
+            if (campo === 'hotel') {
+                contTercero.classList.remove('hidden');
+                labelTercero.innerText = 'Dirección del Hotel';
+                document.getElementById('modalViajeTercero').value = item[`hotel_direccion`] || '';
+                document.getElementById('modalViajeTercero').placeholder = 'Calle, Número, Ciudad, País';
+            } else if (campo === 'vuelo_ida' || campo === 'vuelo_vuelta') {
+                contTercero.classList.remove('hidden');
+                labelTercero.innerText = 'Reserva / Aerolínea';
+                document.getElementById('modalViajeTercero').value = item[`${campo}_local`] || '';
+                document.getElementById('modalViajeTercero').placeholder = 'G62QYT/Ryanair';
+            } else {
+                contTercero.classList.add('hidden');
+            }
+            
+            document.getElementById('modalEditarViaje').classList.remove('hidden');
+        }
+
+        async function guardarDetalleViajeModal() {
+            const { id, campo } = modalEdicionActual;
+            if (!id || !campo) return;
+
+            const nombreVal = document.getElementById('modalViajeNombre').value.trim();
+            const linkVal = document.getElementById('modalViajeLink').value.trim();
+            const terceroVal = document.getElementById('modalViajeTercero').value.trim();
+
+            const item = registrosCargados.find(r => r.id === id);
+            const updateObj = {
+                [`${campo}_nombre`]: nombreVal,
+                [`${campo}_link`]: linkVal
+            };
+
+            if (item) {
+                item[`${campo}_nombre`] = nombreVal;
+                item[`${campo}_link`] = linkVal;
+            }
+
+            if (campo === 'hotel') {
+                updateObj['hotel_direccion'] = terceroVal;
+                if (item) item['hotel_direccion'] = terceroVal;
+            } else if (campo === 'vuelo_ida' || campo === 'vuelo_vuelta') {
+                updateObj[`${campo}_local`] = terceroVal;
+                if (item) item[`${campo}_local`] = terceroVal;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            cerrarModal('modalEditarViaje');
+            rerenderFilaContent(id);
+        }
+
+        function abrirModalVerVuelo(id, campo) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            const valorTercero = (item[`${campo}_local`] || '').trim();
+            let reserva = 'No especificado';
+            let aerolinea = 'No especificada';
+
+            if (valorTercero) {
+                if (valorTercero.includes('/')) {
+                    const partes = valorTercero.split('/');
+                    reserva = partes[0].trim() || 'No especificado';
+                    aerolinea = partes.slice(1).join('/').trim() || 'No especificada';
+                } else {
+                    reserva = valorTercero;
+                }
+            }
+
+            const titulo = campo === 'vuelo_ida' ? '✈️ Vuelo de Ida' : '✈️ Vuelo de Vuelta';
+            document.getElementById('tituloVerVuelo').innerText = titulo;
+            document.getElementById('verCodigoReserva').innerText = reserva;
+            document.getElementById('verNombreAerolinea').innerText = aerolinea;
+
+            document.getElementById('modalVerVuelo').classList.remove('hidden');
+        }
+
+        function abrirModalEnvio(id) {
+            modalEdicionActual = { id, campo: 'envio' };
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('modalEnvioPmeTrack').value = item.envio_pme_track || '';
+            document.getElementById('modalEnvioLocal').value = item.envio_local || '';
+            document.getElementById('modalEnvioTelefono').value = item.envio_telefono || '';
+
+            document.getElementById('modalEditarEnvio').classList.remove('hidden');
+        }
+
+        async function guardarDetalleEnvioModal() {
+            const { id } = modalEdicionActual;
+            if (!id) return;
+
+            const pmeTrackVal = document.getElementById('modalEnvioPmeTrack').value.trim();
+            const localVal = document.getElementById('modalEnvioLocal').value.trim();
+            const telefonoVal = document.getElementById('modalEnvioTelefono').value.trim();
+
+            if (telefonoVal && (telefonoVal.length < 4 || telefonoVal.length > 11)) {
+                alert('El teléfono debe tener entre 4 y 11 dígitos');
+                return;
+            }
+
+            const item = registrosCargados.find(r => r.id === id);
+            const updateObj = {
+                envio_pme_track: pmeTrackVal,
+                envio_local: localVal,
+                envio_telefono: telefonoVal
+            };
+
+            if (item) {
+                item.envio_pme_track = pmeTrackVal;
+                item.envio_local = localVal;
+                item.envio_telefono = telefonoVal;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            cerrarModal('modalEditarEnvio');
+            rerenderFilaContent(id);
+        }
+
+        function abrirModalNota(id) {
+            modalNotaActual = { id };
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('modalNotaTexto').value = item.nota || '';
+            document.getElementById('modalNota').classList.remove('hidden');
+        }
+
+        async function guardarNotaModal() {
+            const { id } = modalNotaActual;
+            if (!id) return;
+
+            const notaVal = document.getElementById('modalNotaTexto').value.trim();
+
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.nota = notaVal;
+            }
+
+            await db.from('instalaciones').update({ nota: notaVal }).eq('id', id);
+
+            cerrarModal('modalNota');
+            actualizarBotonNota(id);
+        }
+
+        function actualizarBotonNota(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            const botones = document.querySelectorAll(`button[onclick="abrirModalNota('${id}')"]`);
+            botones.forEach(btn => {
+                const nota = (item.nota || '').trim();
+                if (nota) {
+                    const colorComplementario = obtenerColorComplementario(item.color);
+                    btn.style.textShadow = `0 0 8px ${colorComplementario}, 0 0 16px ${colorComplementario}`;
+                    btn.classList.add('nota-activa');
+                } else {
+                    btn.style.textShadow = '';
+                    btn.classList.remove('nota-activa');
+                }
+            });
+        }
+
+        function obtenerColorComplementario(hexColor) {
+            const r = parseInt(hexColor.slice(1, 3), 16);
+            const g = parseInt(hexColor.slice(3, 5), 16);
+            const b = parseInt(hexColor.slice(5, 7), 16);
+
+            const rComp = 255 - r;
+            const gComp = 255 - g;
+            const bComp = 255 - b;
+
+            return `rgb(${rComp}, ${gComp}, ${bComp})`;
+        }
+
+        function copiarCodigoReserva() {
+            const codigo = document.getElementById('verCodigoReserva').innerText;
+            if (codigo && codigo !== '------' && codigo !== 'No especificado') {
+                navigator.clipboard.writeText(codigo).then(() => {
+                    alert(`Código de reserva copiado: ${codigo}`);
+                }).catch(err => {
+                    console.error('Error al copiar:', err);
+                });
+            }
+        }
+
+        // ==========================================
+        // 6. OBTENCIÓN DE WIDGETS (CLIMA Y NUMBEO)
+        // ==========================================
+
+        async function cargarWidgetsDestino(item) {
+            const contenedor = document.getElementById(`widget-info-${item.id}`);
+            if (!contenedor) return;
+
+            const direccionOCiudad = item.direccion || '';
+            const ciudad = extraerCiudad(direccionOCiudad);
+            if (!direccionOCiudad || ciudad === 'Sin Ciudad') {
+                contenedor.innerHTML = `<span class="text-slate-400 italic">Dirección requerida</span>`;
+                return;
+            }
+
+            const keyCache = `${ciudad}_${item.fecha_instalacion || 'hoy'}`;
+            if (cacheWidgets[keyCache]) {
+                contenedor.innerHTML = cacheWidgets[keyCache];
+                return;
+            }
+
+            try {
+                const geoData = await geolocalizarConFallback(direccionOCiudad);
+
+                let htmlClima = '🌤️ N/A';
+                let htmlNumbeo = '🚶‍♂️☀️ N/A 🌙 N/A';
+
+                if (geoData) {
+                    const lat = geoData.lat;
+                    const lon = geoData.lon;
+
+                    let fechaUrl = '';
+                    if (item.fecha_instalacion) {
+                        fechaUrl = `&start_date=${item.fecha_instalacion}&end_date=${item.fecha_instalacion}`;
+                    }
+                    const meteoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto${fechaUrl}`);
+                    const meteoData = await meteoRes.json();
+
+                    if (meteoData && meteoData.daily) {
+                        const code = meteoData.daily.weathercode[0];
+                        const tMin = Math.round(meteoData.daily.temperature_2m_min[0]);
+                        const tMax = Math.round(meteoData.daily.temperature_2m_max[0]);
+                        const probLluvia = meteoData.daily.precipitation_probability_max ? meteoData.daily.precipitation_probability_max[0] : 0;
+                        const emoji = obtenerEmojiClima(code);
+
+                        htmlClima = `<span>${emoji}</span> <span>🌧️ ${probLluvia}%</span> <span class="text-blue-600 font-bold">${tMin}°C</span> / <span class="text-red-600 font-bold">${tMax}°C</span>`;
+                    }
+
+                    let puntoMasCercano = null;
+                    let menorDistancia = Infinity;
+
+                    NUMBEO_DATASET.forEach(punto => {
+                        const dist = calcularDistancia(lat, lon, punto.lat, punto.lng);
+                        if (dist < menorDistancia) {
+                            menorDistancia = dist;
+                            puntoMasCercano = punto;
+                        }
+                    });
+
+                    if (puntoMasCercano) {
+                        htmlNumbeo = `<a href="${puntoMasCercano.url}" target="_blank" class="hover:underline flex items-center gap-1" title="Punto Numbeo: ${puntoMasCercano.city} (a ${menorDistancia.toFixed(1)} km)"><span>🚶‍♂️☀️ ${puntoMasCercano.daylight}</span> <span class="ml-1">🌙 ${puntoMasCercano.night}</span></a>`;
+                    }
+                }
+
+                const finalHTML = `
+                    <div class="flex items-center gap-2 border-r border-slate-200 pr-2">
+                        ${htmlClima}
+                    </div>
+                    <div class="flex items-center gap-1">
+                        ${htmlNumbeo}
+                    </div>
+                `;
+
+                cacheWidgets[keyCache] = finalHTML;
+                contenedor.innerHTML = finalHTML;
+
+            } catch (err) {
+                console.error("Error recuperando widgets de viaje:", err);
+                contenedor.innerHTML = `<span class="text-slate-400 italic">Información no disponible</span>`;
+            }
+        }
+
+        // ==========================================
+        // 7. CALENDARIO
+        // ==========================================
+
+        function abrirModalCalendario() {
+            document.getElementById('modalCalendario').classList.remove('hidden');
+            renderizarCalendario();
+        }
+
+        function cambiarMes(delta) {
+            fechaCalendarioActual.setMonth(fechaCalendarioActual.getMonth() + delta);
+            renderizarCalendario();
+        }
+
+        function renderizarCalendario() {
+            const contenedor = document.getElementById('diasCalendario');
+            contenedor.innerHTML = '';
+
+            const año = fechaCalendarioActual.getFullYear();
+            const mes = fechaCalendarioActual.getMonth();
+
+            const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            document.getElementById('mesAñoLabel').innerText = `${nombresMeses[mes]} ${año}`;
+
+            const primerDia = new Date(año, mes, 1);
+            const ultimoDia = new Date(año, mes + 1, 0);
+
+            let diaSemanaInicio = primerDia.getDay() - 1;
+            if (diaSemanaInicio === -1) diaSemanaInicio = 6;
+
+            for (let i = 0; i < diaSemanaInicio; i++) {
+                const divVacio = document.createElement('div');
+                divVacio.className = 'bg-white h-24 rounded-md';
+                contenedor.appendChild(divVacio);
+            }
+
+            for (let d = 1; d <= ultimoDia.getDate(); d++) {
+                const celda = document.createElement('div');
+                celda.className = 'bg-white h-24 rounded-md p-1 flex flex-col justify-between overflow-hidden text-xs border border-slate-100';
+
+                const fechaKey = `${año}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const instalacionesDelDia = registrosCargados.filter(item => item.fecha_instalacion === fechaKey);
+
+                const numDia = document.createElement('div');
+                numDia.className = 'font-bold text-slate-700 text-right pr-1';
+                numDia.innerText = d;
+                celda.appendChild(numDia);
+
+                const listaContenedor = document.createElement('div');
+                listaContenedor.className = 'flex-1 flex flex-col justify-center overflow-hidden';
+
+                if (instalacionesDelDia.length > 0) {
+                    instalacionesDelDia.forEach((item, idx) => {
+                        const bloque = document.createElement('div');
+                        bloque.className = 'flex items-center justify-center font-bold text-[10px] px-1 py-0.5 truncate rounded';
+                        bloque.style.backgroundColor = item.color;
+                        bloque.innerText = extraerCiudad(item.direccion);
+                        
+                        listaContenedor.appendChild(bloque);
+
+                        if (idx < instalacionesDelDia.length - 1) {
+                            const linea = document.createElement('hr');
+                            linea.className = 'border-t border-slate-400 my-0.5';
+                            listaContenedor.appendChild(linea);
+                        }
+                    });
+                }
+
+                celda.appendChild(listaContenedor);
+                contenedor.appendChild(celda);
+            }
+        }
+
+        // ==========================================
+        // 8. MAPA
+        // ==========================================
+
+        function abrirModalMapa() {
+            const modal = document.getElementById('modalMapa');
+            modal.classList.remove('hidden');
+
+            requestAnimationFrame(() => {
+                if (!mapaLeaflet) {
+                    mapaLeaflet = L.map('mapaContenedor').setView([40.4167, -3.7037], 5);
+                    
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Tiles &copy; Esri',
+                        maxZoom: 18
+                    }).addTo(mapaLeaflet);
+                }
+
+                mapaLeaflet.invalidateSize();
+                cargarMarcadoresMapa();
+            });
+        }
+
+        function toggleVisibilidadMapa(id) {
+            if (elementosOcultosMapa.has(id)) {
+                elementosOcultosMapa.delete(id);
+            } else {
+                elementosOcultosMapa.add(id);
+            }
+            actualizarEstadoMapa();
+        }
+
+        function actualizarEstadoMapa() {
+            registrosCargados.forEach(item => {
+                const etiqueta = document.getElementById(`etiqueta-mapa-${item.id}`);
+                const marcador = marcadoresMapa[item.id];
+
+                if (elementosOcultosMapa.has(item.id)) {
+                    if (etiqueta) {
+                        etiqueta.style.backgroundColor = '#e2e8f0';
+                        etiqueta.style.color = '#64748b';
+                        etiqueta.classList.add('grayscale', 'opacity-60', 'line-through');
+                    }
+                    if (marcador && mapaLeaflet.hasLayer(marcador)) {
+                        mapaLeaflet.removeLayer(marcador);
+                    }
+                } else {
+                    if (etiqueta) {
+                        etiqueta.style.backgroundColor = item.color;
+                        etiqueta.style.color = '#1e293b';
+                        etiqueta.classList.remove('grayscale', 'opacity-60', 'line-through');
+                    }
+                    if (marcador && !mapaLeaflet.hasLayer(marcador)) {
+                        mapaLeaflet.addLayer(marcador);
+                    }
+                }
+            });
+        }
+
+        async function cargarMarcadoresMapa() {
+            if (!mapaLeaflet) return;
+
+            Object.keys(marcadoresMapa).forEach(id => {
+                if (mapaLeaflet.hasLayer(marcadoresMapa[id])) {
+                    mapaLeaflet.removeLayer(marcadoresMapa[id]);
+                }
+                delete marcadoresMapa[id];
+            });
+
+            const leyendaContenedor = document.getElementById('leyendaMapa');
+            leyendaContenedor.innerHTML = '';
+
+            const registrosValidos = registrosCargados.filter(item => !item.concluido && item.direccion);
+
+            if (registrosValidos.length === 0) {
+                leyendaContenedor.innerHTML = '<span class="text-sm text-slate-400 italic">No hay instalaciones activas para mostrar en el mapa.</span>';
+                return;
+            }
+
+            registrosValidos.forEach(item => {
+                const ciudad = extraerCiudad(item.direccion);
+                const fechaFormateada = formatearFecha(item.fecha_instalacion);
+                const estaOculto = elementosOcultosMapa.has(item.id);
+
+                const etiqueta = document.createElement('div');
+                etiqueta.id = `etiqueta-mapa-${item.id}`;
+                etiqueta.className = `px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-slate-300 flex items-center gap-2 shrink-0 cursor-pointer select-none transition-all duration-200 hover:scale-105 ${estaOculto ? 'grayscale opacity-60 line-through' : ''}`;
+                etiqueta.style.backgroundColor = estaOculto ? '#e2e8f0' : item.color;
+                etiqueta.style.color = estaOculto ? '#1e293b' : '#1e293b';
+                
+                etiqueta.onclick = () => toggleVisibilidadMapa(item.id);
+
+                etiqueta.innerHTML = `<span>📍 ${ciudad}</span> <span class="text-[11px] font-normal opacity-80">(${fechaFormateada})</span>`;
+                leyendaContenedor.appendChild(etiqueta);
+            });
+
+            for (const item of registrosValidos) {
+                try {
+                    const dataGeo = await geolocalizarConFallback(item.direccion);
+                    
+                    if (dataGeo) {
+                        const lat = dataGeo.lat;
+                        const lon = dataGeo.lon;
+                        const ciudad = extraerCiudad(item.direccion);
+                        const fechaFormateada = formatearFecha(item.fecha_instalacion);
+
+                        const pinSvg = `
+                            <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="${item.color}" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.4));">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
+                                </svg>
+                            </div>`;
+
+                        const iconoColor = L.divIcon({
+                            className: '',
+                            html: pinSvg,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -30]
+                        });
+
+                        const marcador = L.marker([lat, lon], { icon: iconoColor }).bindPopup(`
+                            <div style="text-align: center; font-family: sans-serif;">
+                                <div style="background-color: ${item.color}; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-bottom: 4px; border: 1px solid #cbd5e1;">
+                                    ${ciudad}
+                                </div>
+                                <b>${item.nombre || 'Instalación'}</b><br>
+                                <small>${item.direccion}</small><br>
+                                <small><b>F. Instalación:</b> ${fechaFormateada}</small>
+                            </div>
+                        `);
+
+                        marcadoresMapa[item.id] = marcador;
+
+                        if (!elementosOcultosMapa.has(item.id)) {
+                            marcador.addTo(mapaLeaflet);
+                        }
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+
+                } catch (e) {
+                    console.error("Error al obtener coordenadas:", item.direccion, e);
+                }
+            }
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // ==========================================
+        // 9. EVENTOS E INTERFAZ
+        // ==========================================
+
+        function toggleConcluido(id, estado) {
+            const row = document.getElementById(`fila-${id}`);
+            if (estado) row.classList.add('concluido-row');
+            else row.classList.remove('concluido-row');
+            
+            actualizarCampo(id, 'concluido', estado);
+
+            if (!document.getElementById('modalMapa').classList.contains('hidden')) {
+                cargarMarcadoresMapa();
+            }
+        }
+
+        function comenzarEdicionTel(id) {
+            document.getElementById(`tel-view-${id}`).classList.add('hidden');
+            document.getElementById(`tel-edit-${id}`).classList.remove('hidden');
+            document.getElementById(`tel-input-${id}`).focus();
+        }
+
+        function guardarTel(id) {
+            const input = document.getElementById(`tel-input-${id}`);
+            const val = input.value.trim();
+            const telLimpio = limpiarTelefono(val);
+
+            const wspLink = document.getElementById(`wsp-link-${id}`);
+            wspLink.innerText = val;
+            wspLink.href = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            document.getElementById(`tel-edit-${id}`).classList.add('hidden');
+            document.getElementById(`tel-view-${id}`).classList.remove('hidden');
+
+            actualizarCampo(id, 'telefono', val);
+        }
+
+        function actualizarLinks(id) {
+            const row = document.getElementById(`fila-${id}`);
+            if (!row) return;
+            const inpDir = row.querySelector('.inp-direccion');
+            if (inpDir) {
+                const dir = inpDir.value;
+                const mapLink = document.getElementById(`map-link-${id}`);
+                if (mapLink) mapLink.href = dir ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dir)}` : '#';
+            }
+        }
+
+        document.getElementById('btnNuevaLinea').addEventListener('click', crearNuevaLinea);
+        window.addEventListener('DOMContentLoaded', cargarInstalaciones);
