@@ -1,1 +1,47 @@
 
+   .concluido-row {
+        filter: grayscale(100%);
+        opacity: 0.6;
+    }
+    /* Mantenimiento de fondo blanco en inputs/selects para contraste */
+    tr input, tr select {
+        background-color: #ffffff !important;
+    }
+
+    /* Ocultar elementos para el público general (cuando NO existe la clase .es-editor en <body>) */
+    body:not(.es-editor) #btnToggleViajes,
+    body:not(.es-editor) .btn-eliminar-fila,
+    body:not(.es-editor) .btn-viaje-individual,
+    body:not(.es-editor) .col-concluido {
+        display: none !important;
+    }
+
+    /* Estilo para los campos deshabilitados para el público general */
+    body:not(.es-editor) .inp-fecha-instalacion {
+        pointer-events: none;
+        background-color: #f1f5f9 !important; /* slate-100 */
+        color: #64748b;
+    }
+
+    /* Estilo para el botón de nota con resplandor */
+    .btn-nota {
+        transition: all 0.3s ease;
+    }
+
+    .btn-nota.nota-activa {
+        animation: pulso-nota 2s ease-in-out infinite;
+    }
+
+    @keyframes pulso-nota {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.1);
+        }
+    }
+
+    /* Estilos para el modo envíos */
+    .modo-envios {
+        background-color: #fff7ed !important; /* orange-50 */
+    }
