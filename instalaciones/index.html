@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -52,6 +53,10 @@
                 <!-- Botón Viajes -->
                 <button id="btnToggleViajes" onclick="toggleModoViajesGeneral()" class="bg-sky-600 hover:bg-sky-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Alternar Vista de Viajes">
                     <span>✈️</span> Viajes
+                </button>
+                <!-- Botón Envíos -->
+                <button id="btnToggleEnvios" onclick="toggleModoEnviosGeneral()" class="bg-orange-600 hover:bg-orange-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Alternar Vista de Envíos">
+                    <span>🚚</span> Envíos
                 </button>
                 <!-- Botón Mapa -->
                 <button id="btnAbrirMapa" onclick="abrirModalMapa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Mapa de Instalaciones">
@@ -147,6 +152,51 @@
                 <button onclick="cerrarModal('modalVerVuelo')" class="px-5 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition shadow">
                     ⬅ Volver Atrás
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR ENVÍO -->
+    <div id="modalEditarEnvio" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 class="text-lg font-bold text-slate-800">🚚 Editar Detalle de Envío</h3>
+                <button onclick="cerrarModal('modalEditarEnvio')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">PME Track</label>
+                    <input type="text" id="modalEnvioPmeTrack" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Número de seguimiento PME">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Local</label>
+                    <input type="text" id="modalEnvioLocal" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Almacén o local de origen">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono de Contacto</label>
+                    <input type="text" id="modalEnvioTelefono" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="4 a 11 dígitos" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="cerrarModal('modalEditarEnvio')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm font-medium hover:bg-slate-300">Cancelar</button>
+                <button onclick="guardarDetalleEnvioModal()" class="px-4 py-2 bg-orange-600 text-white rounded text-sm font-medium hover:bg-orange-700">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NOTA -->
+    <div id="modalNota" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 class="text-lg font-bold text-slate-800">📝 Nota</h3>
+                <button onclick="cerrarModal('modalNota')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <textarea id="modalNotaTexto" class="w-full p-3 border border-slate-300 rounded text-sm resize-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" rows="4" placeholder="Escribe tu nota aquí..."></textarea>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="cerrarModal('modalNota')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm font-medium hover:bg-slate-300">Cancelar</button>
+                <button onclick="guardarNotaModal()" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700">Guardar</button>
             </div>
         </div>
     </div>
@@ -253,7 +303,9 @@
         const marcadoresMapa = {};
 
         let modoViajesGlobal = false;
+        let modoEnviosGlobal = false;
         let modalEdicionActual = { id: null, campo: null };
+        let modalNotaActual = { id: null };
 
         const PAISES_CONFIG = {
             "Italia": { dias: 5, orden: 1 },
@@ -537,11 +589,39 @@
             }
         }
 
+        function toggleModoEnviosGeneral() {
+            modoEnviosGlobal = !modoEnviosGlobal;
+            const btn = document.getElementById('btnToggleEnvios');
+            if (modoEnviosGlobal) {
+                btn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+                btn.classList.add('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
+            } else {
+                btn.classList.remove('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
+                btn.classList.add('bg-orange-600', 'hover:bg-orange-700');
+            }
+
+            registrosCargados.forEach(item => {
+                item.modo_envios = modoEnviosGlobal;
+                actualizarCampo(item.id, 'modo_envios', modoEnviosGlobal);
+                rerenderFilaContent(item.id);
+            });
+        }
+
+        function toggleModoEnviosIndividual(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.modo_envios = !item.modo_envios;
+                actualizarCampo(id, 'modo_envios', item.modo_envios);
+                rerenderFilaContent(id);
+            }
+        }
+
         function rerenderFilaContent(id) {
             const tr = document.getElementById(`fila-${id}`);
             const item = registrosCargados.find(r => r.id === id);
             if (tr && item) {
                 tr.innerHTML = obtenerHTMLContenidoFila(item);
+                actualizarBotonNota(id);
                 if (item.modo_viajes) {
                     cargarWidgetsDestino(item);
                 }
@@ -601,6 +681,10 @@
             const telLimpio = limpiarTelefono(item.telefono);
             const wspLink = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
 
+            if (item.modo_envios) {
+                return obtenerHTMLFilaEnvios(item);
+            }
+
             if (item.modo_viajes) {
                 const ciudad = extraerCiudad(item.direccion);
                 const fechaFormateada = formatearFecha(item.fecha_instalacion);
@@ -608,10 +692,13 @@
                 return `
                     <td colspan="11" class="p-2">
                         <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
-                            <a href="${mapLink}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm shrink-0 hover:border-indigo-500 hover:text-indigo-600 transition" title="Ver en Google Maps">
-                                <span>📍 ${ciudad}</span>
-                                <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
-                            </a>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                                <a href="${mapLink}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-indigo-500 hover:text-indigo-600 transition" title="Ver en Google Maps">
+                                    <span>📍 ${ciudad}</span>
+                                    <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
+                                </a>
+                            </div>
 
                             <div class="flex items-center gap-3 shrink-0">
                                 ${renderizarBloqueViaje(item, 'vuelo_ida', 'Vuelo ida')}
@@ -642,13 +729,16 @@
             const attrFechaInstalacion = esEditor ? '' : 'readonly tabindex="-1"';
 
             return `
+                <td class="p-2 text-center">
+                    <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                </td>
                 <td class="p-2">
                     <input type="text" value="${item.presupuesto || ''}" onchange="actualizarCampo('${item.id}', 'presupuesto', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Presup.">
                 </td>
                 <td class="p-2">
                     <select onchange="actualizarCampo('${item.id}', 'modelo', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs font-semibold">
                         <option value="space" ${item.modelo === 'space' ? 'selected' : ''}>SPACE</option>
-                        <option value="freedhome" ${item.modelo === 'freedhome' ? 'selected' : ''}>FREEDHOME</option>
+                        <option value="bike" ${item.modelo === 'bike' ? 'selected' : ''}>BIKE</option>
                     </select>
                 </td>
                 <td class="p-2">
@@ -699,6 +789,153 @@
             `;
         }
 
+        function obtenerHTMLFilaEnvios(item) {
+            const ciudad = extraerCiudad(item.direccion);
+            const fechaFormateada = formatearFecha(item.fecha_instalacion);
+            const pmeTrack = (item.envio_pme_track || '').trim();
+            const local = (item.envio_local || '').trim();
+            const telefono = (item.envio_telefono || '').trim();
+
+            return `
+                <td colspan="11" class="p-2">
+                    <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-orange-500 hover:text-orange-600 transition" title="Ver en Google Maps">
+                                <span>📍 ${ciudad}</span>
+                                <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
+                            </a>
+                        </div>
+
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">PME:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${pmeTrack || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">Local:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${local || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">Tel:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[100px]">${telefono || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                        </div>
+
+                        <button onclick="toggleModoEnviosIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
+                            ↩ Datos Predeterminados
+                        </button>
+                    </div>
+                </td>
+                <td class="p-2 text-center shrink-0">
+                    <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                </td>
+            `;
+        }
+
+        function abrirModalEnvio(id) {
+            modalEdicionActual = { id, campo: 'envio' };
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('modalEnvioPmeTrack').value = item.envio_pme_track || '';
+            document.getElementById('modalEnvioLocal').value = item.envio_local || '';
+            document.getElementById('modalEnvioTelefono').value = item.envio_telefono || '';
+
+            document.getElementById('modalEditarEnvio').classList.remove('hidden');
+        }
+
+        async function guardarDetalleEnvioModal() {
+            const { id } = modalEdicionActual;
+            if (!id) return;
+
+            const pmeTrackVal = document.getElementById('modalEnvioPmeTrack').value.trim();
+            const localVal = document.getElementById('modalEnvioLocal').value.trim();
+            const telefonoVal = document.getElementById('modalEnvioTelefono').value.trim();
+
+            if (telefonoVal && (telefonoVal.length < 4 || telefonoVal.length > 11)) {
+                alert('El teléfono debe tener entre 4 y 11 dígitos');
+                return;
+            }
+
+            const item = registrosCargados.find(r => r.id === id);
+            const updateObj = {
+                envio_pme_track: pmeTrackVal,
+                envio_local: localVal,
+                envio_telefono: telefonoVal
+            };
+
+            if (item) {
+                item.envio_pme_track = pmeTrackVal;
+                item.envio_local = localVal;
+                item.envio_telefono = telefonoVal;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            cerrarModal('modalEditarEnvio');
+            rerenderFilaContent(id);
+        }
+
+        function abrirModalNota(id) {
+            modalNotaActual = { id };
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('modalNotaTexto').value = item.nota || '';
+            document.getElementById('modalNota').classList.remove('hidden');
+        }
+
+        async function guardarNotaModal() {
+            const { id } = modalNotaActual;
+            if (!id) return;
+
+            const notaVal = document.getElementById('modalNotaTexto').value.trim();
+
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.nota = notaVal;
+            }
+
+            await db.from('instalaciones').update({ nota: notaVal }).eq('id', id);
+
+            cerrarModal('modalNota');
+            actualizarBotonNota(id);
+        }
+
+        function actualizarBotonNota(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            const botones = document.querySelectorAll(`button[onclick="abrirModalNota('${id}')"]`);
+            botones.forEach(btn => {
+                const nota = (item.nota || '').trim();
+                if (nota) {
+                    const colorComplementario = obtenerColorComplementario(item.color);
+                    btn.style.textShadow = `0 0 8px ${colorComplementario}, 0 0 16px ${colorComplementario}`;
+                    btn.classList.add('nota-activa');
+                } else {
+                    btn.style.textShadow = '';
+                    btn.classList.remove('nota-activa');
+                }
+            });
+        }
+
+        function obtenerColorComplementario(hexColor) {
+            const r = parseInt(hexColor.slice(1, 3), 16);
+            const g = parseInt(hexColor.slice(3, 5), 16);
+            const b = parseInt(hexColor.slice(5, 7), 16);
+
+            const rComp = 255 - r;
+            const gComp = 255 - g;
+            const bComp = 255 - b;
+
+            return `rgb(${rComp}, ${gComp}, ${bComp})`;
+        }
+
         function renderizarFila(item) {
             const tbody = document.getElementById('tablaCuerpo');
             const tr = document.createElement('tr');
@@ -707,6 +944,8 @@
             tr.style.backgroundColor = item.color;
             tr.innerHTML = obtenerHTMLContenidoFila(item);
             tbody.appendChild(tr);
+
+            actualizarBotonNota(item.id);
 
             if (item.modo_viajes) {
                 cargarWidgetsDestino(item);
