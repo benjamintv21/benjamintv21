@@ -1,548 +1,1416 @@
+
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-50">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Imotion Group - Gestor de Comunicaciones e Información Fiscal</title>
-    <!-- Tailwind CSS -->
+    <title>Organizador de Instalaciones</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0f7ff',
-                            100: '#e0effe',
-                            500: '#0284c7',
-                            600: '#0369a1',
-                            700: '#075985',
-                            900: '#0c4a6e',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.25s ease-in-out forwards;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
-</head>
-<body class="h-full text-slate-800 antialiased flex flex-col font-sans">
+    <!-- Supabase JS Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Leaflet JS y CSS para el Mapa Gratuito (OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-500 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-brand-500/20">
-                    iM
+<style>
+    .concluido-row {
+        filter: grayscale(100%);
+        opacity: 0.6;
+    }
+    /* Mantenimiento de fondo blanco en inputs/selects para contraste */
+    tr input, tr select {
+        background-color: #ffffff !important;
+    }
+
+    /* Ocultar elementos para el público general (cuando NO existe la clase .es-editor en <body>) */
+    body:not(.es-editor) #btnToggleViajes,
+    body:not(.es-editor) .btn-eliminar-fila,
+    body:not(.es-editor) .btn-viaje-individual,
+    body:not(.es-editor) .col-concluido {
+        display: none !important;
+    }
+
+    /* Estilo para los campos deshabilitados para el público general */
+    body:not(.es-editor) .inp-fecha-instalacion {
+        pointer-events: none;
+        background-color: #f1f5f9 !important; /* slate-100 */
+        color: #64748b;
+    }
+</style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
+
+    <div class="max-w-[100%] mx-auto bg-white rounded-xl shadow-lg p-6">
+        <!-- Cabecera -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-200 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">📌 Organizador de Instalaciones</h1>
+                <p class="text-sm text-slate-500">Gestión de envíos e instalaciones conectada a Supabase</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <!-- Botón Viajes -->
+                <button id="btnToggleViajes" onclick="toggleModoViajesGeneral()" class="bg-sky-600 hover:bg-sky-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Alternar Vista de Viajes">
+                    <span>✈️</span> Viajes
+                </button>
+                <!-- Botón Envíos -->
+                <button id="btnToggleEnvios" onclick="toggleModoEnviosGeneral()" class="bg-orange-600 hover:bg-orange-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Alternar Vista de Envíos">
+                    <span>🚚</span> Envíos
+                </button>
+                <!-- Botón Mapa -->
+                <button id="btnAbrirMapa" onclick="abrirModalMapa()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Mapa de Instalaciones">
+                    <span>🗺️</span> Mapa
+                </button>
+                <!-- Botón Calendario -->
+                <button id="btnAbrirCalendario" onclick="abrirModalCalendario()" class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Ver Calendario de Instalaciones">
+                    <span>📅</span> Calendario
+                </button>
+                <!-- Botón Nueva Línea -->
+                <button id="btnNuevaLinea" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow transition duration-150 flex items-center gap-2">
+                    <span>➕</span> Nueva Línea
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[1200px]">
+                <thead>
+                    <tr class="bg-slate-800 text-white text-xs uppercase tracking-wider">
+                        <th class="p-3 rounded-tl-lg w-20">Presup.</th>
+                        <th class="p-3 w-28">Modelo</th>
+                        <th class="p-3 text-center col-concluido">Concluido</th>
+                        <th class="p-3 w-28">País</th>
+                        <th class="p-3">Nombre</th>
+                        <th class="p-3 min-w-[280px]">Dirección de Entrega</th>
+                        <th class="p-3 text-center">Confirmado</th>
+                        <th class="p-3">Teléfono</th>
+                        <th class="p-3">F. Envío</th>
+                        <th class="p-3">F. Est. Llegada</th>
+                        <th class="p-3">F. Prev. Instalación</th>
+                        <th class="p-3 text-center">Concluido</th>
+                        <th class="p-3 text-center rounded-tr-lg">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCuerpo" class="divide-y divide-slate-200 text-sm">
+                    <!-- Las filas se cargarán dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR VIAJE -->
+    <div id="modalEditarViaje" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 id="tituloModalViaje" class="text-lg font-bold text-slate-800">Editar Detalle</h3>
+                <button onclick="cerrarModal('modalEditarViaje')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre</label>
+                    <input type="text" id="modalViajeNombre" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Ingrese nombre descriptivo">
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold text-slate-900 leading-none">I-MOTION GROUP</h1>
-                    <p class="text-xs text-slate-500 mt-0.5">Gestor de Comunicaciones Rápidas</p>
+                    <label id="labelModalViajeLink" class="block text-xs font-semibold text-slate-600 mb-1">Enlace / URL</label>
+                    <input type="text" id="modalViajeLink" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="https://ejemplo.com">
+                </div>
+                <!-- Tercer campo dinámico -->
+                <div id="contenedorModalViajeTercerCampo">
+                    <label id="labelModalViajeTercero" class="block text-xs font-semibold text-slate-600 mb-1">Reserva / Aerolínea</label>
+                    <input type="text" id="modalViajeTercero" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="G62QYT/Ryanair">
                 </div>
             </div>
-            <div class="text-xs font-medium bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Panel Operativo
-            </div>
-        </div>
-    </header>
-
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
-
-        <!-- VISTA PRINCIPAL: 4 CASILLAS -->
-        <div id="main-view" class="fade-in space-y-6">
-            <div class="text-center max-w-2xl mx-auto mb-8">
-                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Atajos de Información y Plantillas</h2>
-                <p class="text-slate-600 mt-2 text-sm sm:text-base">Seleccione una tarjeta para acceder a la información fiscal o copiar comunicados oficiales en múltiples idiomas.</p>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-                
-                <!-- CASILLA 1: IMOTION CIF -->
-                <div onclick="openCifModal()" class="group relative bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-xl border border-slate-200/80 hover:border-brand-500 transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1">
-                    <div>
-                        <div class="w-14 h-14 rounded-2xl bg-blue-50 text-brand-600 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 group-hover:bg-brand-600 group-hover:text-white transition-all duration-300 shadow-inner">
-                            <i class="fa-solid font-bold fa-id-card"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:text-brand-600 transition-colors">Imotion CIF</h3>
-                        <p class="text-slate-500 text-sm leading-relaxed mb-4">
-                            Consulta y copia rápida de todos los datos fiscales completos de la empresa para facturación y contratos.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-slate-100 flex items-center text-sm font-semibold text-brand-600 group-hover:text-brand-700">
-                        <span>Ver Datos Fiscales</span>
-                        <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-                <!-- CASILLA 2: INSTALACIONES -->
-                <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-md border border-slate-200/80 flex flex-col justify-between transition-all duration-300">
-                    <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl shadow-inner">
-                                <i class="fa-solid fa-screwdriver-wrench"></i>
-                            </div>
-                            <div class="relative">
-                                <select id="lang-instalaciones" onchange="updateInstalacionesText()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer outline-none">
-                                    <option value="es" selected>🇪🇸 Español</option>
-                                    <option value="en">🇬🇧 English</option>
-                                    <option value="it">🇮🇹 Italiano</option>
-                                    <option value="pt">🇵🇹 Português</option>
-                                    <option value="fr">🇫🇷 Français</option>
-                                </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                                    <i class="fa-solid fa-chevron-down text-xs"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h3 class="text-xl font-bold text-slate-900 mb-2">Instalaciones</h3>
-                        
-                        <div class="relative bg-slate-50 rounded-xl p-4 border border-slate-200/60 my-4">
-                            <div id="preview-instalaciones" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]"></div>
-                            <div class="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none rounded-b-xl"></div>
-                        </div>
-                    </div>
-
-                    <button onclick="copyInstalacionesText(this)" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 group">
-                        <i class="fa-regular fa-copy group-hover:scale-110 transition-transform"></i>
-                        <span>Copiar Mensaje Completo</span>
-                    </button>
-                </div>
-
-                <!-- CASILLA 3: ATENCIÓN TELEFÓNICA -->
-                <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-md border border-slate-200/80 flex flex-col justify-between transition-all duration-300">
-                    <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl shadow-inner">
-                                <i class="fa-solid fa-headset"></i>
-                            </div>
-                            <div class="relative">
-                                <select id="lang-atencion" onchange="updateAtencionText()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 cursor-pointer outline-none">
-                                    <option value="es" selected>🇪🇸 Español</option>
-                                    <option value="en">🇬🇧 English</option>
-                                    <option value="it">🇮🇹 Italiano</option>
-                                    <option value="pt">🇵🇹 Português</option>
-                                    <option value="fr">🇫🇷 Français</option>
-                                </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                                    <i class="fa-solid fa-chevron-down text-xs"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h3 class="text-xl font-bold text-slate-900 mb-2">Atención telefónica</h3>
-                        
-                        <div class="relative bg-slate-50 rounded-xl p-4 border border-slate-200/60 my-4">
-                            <div id="preview-atencion" class="text-xs text-slate-600 font-normal leading-relaxed line-clamp-4 min-h-[4.5rem]"></div>
-                            <div class="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none rounded-b-xl"></div>
-                        </div>
-                    </div>
-
-                    <button onclick="copyAtencionText(this)" class="w-full mt-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-3 px-4 rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 group">
-                        <i class="fa-regular fa-copy group-hover:scale-110 transition-transform"></i>
-                        <span>Copiar Mensaje Completo</span>
-                    </button>
-                </div>
-
-                <!-- CASILLA 4: CONTACTO -->
-                <div onclick="openContactModal()" class="group relative bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-xl border border-slate-200/80 hover:border-green-500 transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1">
-                    <div>
-                        <div class="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 group-hover:bg-green-600 group-hover:text-white transition-all duration-300 shadow-inner">
-                            <i class="fa-brands fa-whatsapp"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:text-green-600 transition-colors">Contacto</h3>
-                        <p class="text-slate-500 text-sm leading-relaxed mb-4">
-                            Número de teléfono, email y código QR de WhatsApp para contacto directo y rápido.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-slate-100 flex items-center text-sm font-semibold text-green-600 group-hover:text-green-700">
-                        <span>Ver Contacto</span>
-                        <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- VISTA CIF -->
-        <div id="cif-view" class="hidden fade-in max-w-3xl mx-auto w-full">
-            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-                <div class="bg-gradient-to-r from-brand-700 to-brand-600 px-6 sm:px-8 py-6 text-white flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-sm">
-                            <i class="fa-solid fa-building text-2xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl sm:text-2xl font-bold">Datos Fiscales Oficiales</h2>
-                            <p class="text-brand-100 text-xs sm:text-sm">I-MOTION GROUP GLOBAL IBERICA SL</p>
-                        </div>
-                    </div>
-                    <button onclick="closeCifModal()" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-9 h-9 flex items-center justify-center transition-colors">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-
-                <div class="p-6 sm:p-10 space-y-6 bg-slate-50/50">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2">
-                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Denominación Social</span>
-                            <p id="cif-denominacion" class="text-lg sm:text-xl font-extrabold text-slate-900">I-MOTION GROUP GLOBAL IBERICA SL.</p>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">NIF / CIF</span>
-                            <p id="cif-nif" class="text-xl sm:text-2xl font-black text-slate-900 tracking-wider">B86999273</p>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Código Postal</span>
-                            <p id="cif-cp" class="text-xl sm:text-2xl font-black text-slate-900 tracking-wider">28660</p>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2">
-                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Domicilio Social Actual</span>
-                            <p id="cif-domicilio" class="text-base sm:text-lg font-bold text-slate-800">CALLE LABRADORES, 13</p>
-                            <a href="https://maps.google.com/?q=CALLE+LABRADORES+13+BOADILLA+DEL+MONTE+28660+Madrid" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-brand-600 hover:text-brand-700 mt-2 gap-1 hover:underline">
-                                <i class="fa-solid fa-map-location-dot"></i> Ver en Google Maps
-                            </a>
-                        </div>
-                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                            <span class="text-xs font-bold text-brand-600 uppercase tracking-wider block mb-1">Provincia</span>
-                            <p id="cif-provincia" class="text-lg font-bold text-slate-800">Madrid</p>
-                        </div>
-                    </div>
-
-                    <div class="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-4">
-                        <button onclick="closeCifModal()" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition-all text-center flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-arrow-left text-sm"></i>
-                            <span>Atrás</span>
-                        </button>
-                        <button onclick="copyCifData(this)" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold shadow-lg shadow-brand-500/25 transition-all text-center flex items-center justify-center gap-2.5">
-                            <i class="fa-regular fa-copy text-lg"></i>
-                            <span>Copiar Datos Fiscales</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- VISTA CONTACTO -->
-        <div id="contact-view" class="hidden fade-in max-w-lg mx-auto w-full">
-            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-                <div class="bg-gradient-to-r from-green-700 to-green-600 px-6 sm:px-8 py-6 text-white flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-sm">
-                            <i class="fa-brands fa-whatsapp text-2xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl sm:text-2xl font-bold">Contacto</h2>
-                            <p class="text-green-100 text-xs sm:text-sm">WhatsApp directo</p>
-                        </div>
-                    </div>
-                    <button onclick="closeContactModal()" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-9 h-9 flex items-center justify-center transition-colors">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-
-                <div class="p-6 sm:p-10 space-y-6 bg-slate-50/50">
-                    
-                    <!-- Número grande a todo el ancho -->
-                    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm text-center">
-                        <span class="text-xs font-bold text-green-600 uppercase tracking-wider block mb-3">Teléfono</span>
-                        <p class="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight break-all">
-                            +34 618 24 18 34
-                        </p>
-                    </div>
-
-                    <!-- QR -->
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center">
-                        <span class="text-xs font-bold text-green-600 uppercase tracking-wider block mb-4">Escanea para abrir WhatsApp</span>
-                        <img 
-                            src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fapi.whatsapp.com%2Fsend%3Fphone%3D34618241834%26text%3D%25F0%259F%2591%258B" 
-                            alt="QR WhatsApp" 
-                            class="w-52 h-52 sm:w-56 sm:h-56 rounded-xl border border-slate-100 shadow-inner"
-                            width="220"
-                            height="220"
-                        >
-                        <p class="text-xs text-slate-500 mt-4 text-center">Al escanear se abrirá WhatsApp con el mensaje 👋</p>
-                    </div>
-
-                    <!-- Email en letra grande y negrita -->
-                    <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm text-center">
-                        <span class="text-xs font-bold text-green-600 uppercase tracking-wider block mb-3">Email</span>
-                        <p class="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight break-all">
-                            serviciotecnico1@i-motiongroup.com
-                        </p>
-                    </div>
-
-                    <!-- Botones -->
-                    <div class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-                        <button onclick="closeContactModal()" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition-all text-center flex items-center justify-center gap-2 order-2 sm:order-1">
-                            <i class="fa-solid fa-arrow-left text-sm"></i>
-                            <span>Volver</span>
-                        </button>
-                        
-                        <button onclick="copyPhoneNumber(this)" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold shadow-lg shadow-green-500/25 transition-all text-center flex items-center justify-center gap-2.5 order-1 sm:order-2">
-                            <i class="fa-regular fa-copy text-lg"></i>
-                            <span>Copiar número</span>
-                        </button>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Toast -->
-    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-        <div class="bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-800 flex items-center gap-3">
-            <div id="toast-icon-bg" class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm">
-                <i class="fa-solid fa-check"></i>
-            </div>
-            <div>
-                <p id="toast-message" class="text-sm font-medium">¡Copiado al portapapeles!</p>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="cerrarModal('modalEditarViaje')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm font-medium hover:bg-slate-300">Cancelar</button>
+                <button onclick="guardarDetalleViajeModal()" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700">Guardar</button>
             </div>
         </div>
     </div>
 
-    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
-            &copy; <span id="year"></span> I-Motion Group Global Ibérica S.L. Todos los derechos reservados.
+    <!-- MODAL MOSTRAR DETALLE VUELO (RESERVA Y AEROLÍNEA) -->
+    <div id="modalVerVuelo" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <h3 id="tituloVerVuelo" class="text-lg font-bold text-slate-800 mb-2">Detalle del Vuelo</h3>
+            
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+                <p class="text-xs text-slate-500 uppercase tracking-wider mb-1 font-semibold">Código de Reserva</p>
+                <div class="flex items-center justify-center gap-2 mb-3">
+                    <span id="verCodigoReserva" class="text-2xl font-mono font-bold text-indigo-600 tracking-wide">------</span>
+                    <button onclick="copiarCodigoReserva()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 p-1.5 rounded transition text-xs font-medium" title="Copiar Código">
+                        📋 Copiar
+                    </button>
+                </div>
+                <div class="border-t border-slate-200 pt-2">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-0.5 font-semibold">Aerolínea / Compañía</p>
+                    <p id="verNombreAerolinea" class="text-base font-bold text-slate-700">-----------</p>
+                </div>
+            </div>
+
+            <div class="flex justify-center">
+                <button onclick="cerrarModal('modalVerVuelo')" class="px-5 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition shadow">
+                    ⬅ Volver Atrás
+                </button>
+            </div>
         </div>
-    </footer>
+    </div>
+
+    <!-- MODAL EDITAR ENVÍO -->
+    <div id="modalEditarEnvio" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 class="text-lg font-bold text-slate-800">🚚 Editar Detalle de Envío</h3>
+                <button onclick="cerrarModal('modalEditarEnvio')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">PME Track</label>
+                    <input type="text" id="modalEnvioPmeTrack" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Número de seguimiento PME">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Local</label>
+                    <input type="text" id="modalEnvioLocal" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="Almacén o local de origen">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono de Contacto</label>
+                    <input type="text" id="modalEnvioTelefono" class="w-full p-2 border border-slate-300 rounded text-sm" placeholder="4 a 11 dígitos" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="cerrarModal('modalEditarEnvio')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm font-medium hover:bg-slate-300">Cancelar</button>
+                <button onclick="guardarDetalleEnvioModal()" class="px-4 py-2 bg-orange-600 text-white rounded text-sm font-medium hover:bg-orange-700">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NOTA -->
+    <div id="modalNota" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h3 class="text-lg font-bold text-slate-800">📝 Nota</h3>
+                <button onclick="cerrarModal('modalNota')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <textarea id="modalNotaTexto" class="w-full p-3 border border-slate-300 rounded text-sm resize-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none" rows="4" placeholder="Escribe tu nota aquí..."></textarea>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="cerrarModal('modalNota')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded text-sm font-medium hover:bg-slate-300">Cancelar</button>
+                <button onclick="guardarNotaModal()" class="px-4 py-2 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CALENDARIO -->
+    <div id="modalCalendario" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-xl font-bold text-slate-800">📅 Calendario de Instalaciones</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="cambiarMes(-1)" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 rounded font-bold">&lt;</button>
+                        <span id="mesAñoLabel" class="font-semibold text-slate-700 min-w-[120px] text-center"></span>
+                        <button onclick="cambiarMes(1)" class="px-2 py-1 bg-slate-200 hover:bg-slate-300 rounded font-bold">&gt;</button>
+                    </div>
+                </div>
+                <button onclick="cerrarModal('modalCalendario')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs uppercase text-slate-500 mb-2">
+                <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+            </div>
+            <div id="diasCalendario" class="grid grid-cols-7 gap-1 bg-slate-200 p-1 rounded-lg">
+                <!-- Se genera mediante JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MAPA -->
+    <div id="modalMapa" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full p-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b">
+                <h2 class="text-xl font-bold text-slate-800">🗺️ Ubicación de Instalaciones</h2>
+                <button onclick="cerrarModal('modalMapa')" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <div id="leyendaMapa" class="flex flex-wrap gap-2 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[50px] max-h-36 overflow-y-auto">
+                <!-- Las etiquetas se generarán dinámicamente -->
+            </div>
+
+            <div id="mapaContenedor" class="w-full h-[450px] rounded-lg bg-slate-100"></div>
+        </div>
+    </div>
 
     <script>
-        document.getElementById('year').textContent = new Date().getFullYear();
+        // ==========================================
+        // COMPROBACIÓN DE MODO EDITOR
+        // ==========================================
+        const params = new URLSearchParams(window.location.search);
+        const esEditor = params.get('nombre') === 'editor' || params.get('nobre') === 'editor';
 
-        const textInstalaciones = {
-            es: `Hola, soy Luis Miguel, técnico responsable de la instalación de su Shape Space, primeramente necesitaría que me confirme la dirección de entrega donde se instalará el dispositivo.
+        if (esEditor) {
+            document.body.classList.add('es-editor');
+        }
 
-Para poder planificar la visita de la forma más eficiente, le agradecería que me facilitase fotografías del área de instalación, de la entrada y del plano de la estancia (si dispone de él). Además, si es posible, agradecería que nos enviase un vídeo del recorrido completo desde el punto donde se descargará la máquina hasta la habitación o espacio exacto donde se emplazará.
+        // ==========================================
+        // 1. CONFIGURACIÓN DE SUPABASE Y COLORES
+        // ==========================================
+        const SUPABASE_URL = 'https://xgbgnofruzjrvfalckvl.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-Asimismo, le indico algunos aspectos clave a tener en cuenta para el día de la entrega y el montaje:
+        const PALETA_ARCOIRIS = [
+            { nombre: 'Rojo', hex: '#fecaca' },
+            { nombre: 'Naranja', hex: '#ffedd5' },
+            { nombre: 'Amarillo', hex: '#fef9c3' },
+            { nombre: 'Verde', hex: '#dcfce7' },
+            { nombre: 'Añil', hex: '#e0e7ff' },
+            { nombre: 'Azul', hex: '#dbeafe' },
+            { nombre: 'Violeta', hex: '#f3e8ff' }
+        ];
 
-• Permisos de la vía pública y aparcamiento: Corresponde al cliente gestionar con antelación los permisos necesarios en caso de que la descarga pueda interrumpir el tráfico o cortar la vía pública. Asimismo, es necesario reservar o asegurar un espacio de aparcamiento lo más cercano posible al acceso para poder desmontar la estructura ahí antes de traslados a su ubicación final.
-• Ayuda para el transporte: Se requerirá la asistencia de al menos una persona para mover las piezas más voluminosas durante la descarga y el acceso, pueden ser necesarias dos personas dependiendo de la complejidad del acceso a la habitación dónde se instalará.
-• Gestión de residuos: La gestión y retirada de los embalajes sobrantes (incluyendo palés y la jaula de embalaje, que una vez desmontada genera aproximadamente 40 kg de madera) queda a cargo del cliente.
+        // Dataset ampliado de Numbeo integrando nodos regionales
+        const NUMBEO_DATASET = [
+            { city: "Palermo, Italy", lat: 38.1157, lng: 13.3615, url: "https://www.numbeo.com/crime/in/Palermo", daylight: 61.20, night: 35.80 },
+            { city: "Catania, Italy", lat: 37.5079, lng: 15.0830, url: "https://www.numbeo.com/crime/in/Catania", daylight: 58.40, night: 30.10 },
+            { city: "Rome, Italy", lat: 41.9028, lng: 12.4964, url: "https://www.numbeo.com/crime/in/Rome", daylight: 64.30, night: 36.20 },
+            { city: "Perugia, Italy", lat: 43.1107, lng: 12.3908, url: "https://www.numbeo.com/crime/in/Perugia-Italy", daylight: 72.10, night: 45.30 },
+            { city: "Florence, Italy", lat: 43.7696, lng: 11.2558, url: "https://www.numbeo.com/crime/in/Florence", daylight: 71.50, night: 42.80 },
+            { city: "Milan, Italy", lat: 45.4642, lng: 9.1900, url: "https://www.numbeo.com/crime/in/Milan", daylight: 58.40, night: 32.10 },
+            { city: "Naples, Italy", lat: 40.8518, lng: 14.2681, url: "https://www.numbeo.com/crime/in/Naples", daylight: 52.30, night: 28.40 },
+            { city: "Bologna, Italy", lat: 44.4949, lng: 11.3426, url: "https://www.numbeo.com/crime/in/Bologna", daylight: 66.80, night: 39.20 },
+            { city: "Turin, Italy", lat: 45.0703, lng: 7.6869, url: "https://www.numbeo.com/crime/in/Turin", daylight: 62.10, night: 35.60 },
+            { city: "Krakow (Cracovia), Poland", lat: 50.0647, lng: 19.9450, url: "https://www.numbeo.com/crime/in/Krakow-Cracow", daylight: 83.50, night: 63.40 },
+            { city: "Katowice, Poland", lat: 50.2649, lng: 19.0238, url: "https://www.numbeo.com/crime/in/Katowice", daylight: 78.10, night: 55.20 },
+            { city: "Warsaw, Poland", lat: 52.2297, lng: 21.0122, url: "https://www.numbeo.com/crime/in/Warsaw", daylight: 81.90, night: 62.80 },
+            { city: "Madrid, Spain", lat: 40.4168, lng: -3.7038, url: "https://www.numbeo.com/crime/in/Madrid", daylight: 79.40, night: 61.20 },
+            { city: "Barcelona, Spain", lat: 41.3851, lng: 2.1734, url: "https://www.numbeo.com/crime/in/Barcelona", daylight: 68.20, night: 41.50 },
+            { city: "Valencia, Spain", lat: 39.4699, lng: -0.3763, url: "https://www.numbeo.com/crime/in/Valencia", daylight: 82.50, night: 65.30 },
+            { city: "Seville, Spain", lat: 37.3891, lng: -5.9845, url: "https://www.numbeo.com/crime/in/Seville", daylight: 78.10, night: 58.90 },
+            { city: "Bordeaux, France", lat: 44.8378, lng: -0.5792, url: "https://www.numbeo.com/crime/in/Bordeaux", daylight: 70.86, night: 37.15 },
+            { city: "Paris, France", lat: 48.8566, lng: 2.3522, url: "https://www.numbeo.com/crime/in/Paris", daylight: 62.40, night: 34.80 },
+            { city: "Marseille, France", lat: 43.2965, lng: 5.3698, url: "https://www.numbeo.com/crime/in/Marseille", daylight: 48.20, night: 24.50 },
+            { city: "London, United Kingdom", lat: 51.5074, lng: -0.1278, url: "https://www.numbeo.com/crime/in/London", daylight: 65.10, night: 38.90 },
+            { city: "Berlin, Germany", lat: 52.5200, lng: 13.4050, url: "https://www.numbeo.com/crime/in/Berlin", daylight: 75.80, night: 52.10 },
+            { city: "Tokyo, Japan", lat: 35.6762, lng: 139.6503, url: "https://www.numbeo.com/crime/in/Tokyo", daylight: 92.30, night: 81.40 },
+            { city: "New York, NY, United States", lat: 40.7128, lng: -74.0060, url: "https://www.numbeo.com/crime/in/New-York", daylight: 68.50, night: 42.10 }
+        ];
 
-Muchas gracias por su colaboración facilitando esta información antes de mi llegada. Quedo a su disposición si tiene cualquier duda.`,
+        let registrosCargados = [];
+        let mapaLeaflet = null;
+        let fechaCalendarioActual = new Date();
+        const elementosOcultosMapa = new Set();
+        const marcadoresMapa = {};
 
-            en: `Hello, I’m Luis Miguel, the technician responsible for the installation of your Shape Space. First of all, I would need you to confirm the delivery address where the equipment will be installed.
+        let modoViajesGlobal = false;
+        let modoEnviosGlobal = false;
+        let modalEdicionActual = { id: null, campo: null };
+        let modalNotaActual = { id: null };
 
-In order to plan the visit as efficiently as possible, I would be grateful if you could provide me with photographs of the installation area, the entrance and the floor plan of the premises (if available). In addition, if possible, we would appreciate it if you could send us a video showing the complete route from the point where the machine will be unloaded to the exact room or area where it will be installed.
-
-I would also like to highlight some important points to take into consideration for the delivery and installation day:
-
-• Public road and parking permits: It is the customer’s responsibility to arrange in advance any permits that may be required if the unloading process could disrupt traffic or temporarily block the public road. It is also necessary to reserve or secure a parking space as close as possible to the entrance, so that the structure can be dismantled there before being transported to its final location.
-
-• Assistance with moving the equipment: At least one person will be required to assist with moving the larger components during unloading and access to the premises. Depending on the complexity of the route to the room where the equipment will be installed, two people may be required.
-
-• Waste disposal: The management and removal of any remaining packaging materials (including pallets and the wooden packing crate, which, once dismantled, produces approximately 40 kg of wood waste) will be the customer’s responsibility.
-
-Thank you very much for your cooperation and for providing us with this information before my arrival. Please do not hesitate to contact me if you have any questions.`,
-
-            it: `Buongiorno, sono Luis Miguel, il tecnico responsabile dell’installazione del vostro Shape Space. Innanzitutto, avrei bisogno che mi confermasse l’indirizzo di consegna presso il quale verrà installato il dispositivo.
-
-Per poter pianificare la visita nel modo più efficiente possibile, le sarei grato se potesse fornirmi alcune fotografie dell’area di installazione, dell’ingresso e della pianta del locale (se disponibile). Inoltre, se possibile, le chiederei di inviarci un video che mostri l’intero percorso dal punto in cui verrà scaricata la macchina fino alla stanza o allo spazio esatto in cui verrà installata.
-
-Inoltre, le indico alcuni aspetti importanti da tenere in considerazione per il giorno della consegna e del montaggio:
-
-• Permessi per l’occupazione del suolo pubblico e parcheggio: È responsabilità del cliente occuparsi in anticipo dei permessi necessari nel caso in cui le operazioni di scarico possano interrompere il traffico o comportare la chiusura della strada. È inoltre necessario riservare o assicurare uno spazio per il parcheggio il più vicino possibile all’accesso, in modo da poter smontare la struttura in quel punto prima di trasportarla nella sua posizione definitiva.
-
-• Assistenza per il trasporto: Sarà necessaria la presenza di almeno una persona per aiutare a movimentare i componenti più voluminosi durante lo scarico e l’accesso ai locali. A seconda della complessità del percorso fino alla stanza in cui verrà installato il dispositivo, potrebbero essere necessarie due persone.
-
-• Gestione dei rifiuti: La gestione e lo smaltimento dei materiali di imballaggio rimanenti (compresi i pallet e la gabbia di imballaggio, che una volta smontata genera circa 40 kg di legno) sono a carico del cliente.
-
-Grazie mille per la collaborazione e per averci fornito queste informazioni prima del mio arrivo. Rimango a sua disposizione per qualsiasi dubbio o necessità di chiarimento.`,
-
-            pt: `Olá, sou o Luis Miguel, o técnico responsável pela instalação do vosso Shape Space. Em primeiro lugar, necessitaria que me confirmasse a morada de entrega onde o equipamento será instalado.
-
-Para poder planear a visita da forma mais eficiente possível, agradecia que me facultasse fotografias da área de instalação, da entrada e da planta do espaço (caso disponha dela). Além disso, se possível, agradecia que nos enviasse um vídeo de todo o percurso desde o ponto onde a máquina será descarregada até à divisão ou espaço exato onde será instalada.
-
-Gostaria também de indicar alguns aspetos importantes a ter em conta para o dia da entrega e da montagem:
-
-• Licenças para ocupação da via pública e estacionamento: É da responsabilidade do cliente tratar antecipadamente das licenças necessárias caso a descarga possa interromper o trânsito ou implicar o corte da via pública. É também necessário reservar ou garantir um espaço de estacionamento o mais próximo possível do acesso, de forma a permitir desmontar a estrutura nesse local antes de a transportar para a sua localização final.
-
-• Ajuda para o transporte: Será necessária a assistência de pelo menos uma pessoa para ajudar a movimentar as peças de maiores dimensões durante a descarga e o acesso ao local. Dependendo da complexidade do acesso à divisão onde será instalado o equipamento, poderão ser necessárias duas pessoas.
-
-• Gestão de resíduos: A gestão e remoção dos materiais de embalagem sobrantes (incluindo paletes e a estrutura de madeira da embalagem, que, depois de desmontada, gera aproximadamente 40 kg de madeira) ficará a cargo do cliente.
-
-Muito obrigado pela sua colaboração e por nos facultar estas informações antes da minha chegada. Fico à sua disposição caso tenha alguma dúvida.`,
-
-            fr: `Bonjour, je suis Luis Miguel, le technicien responsable de l’installation de votre Shape Space. Tout d’abord, j’aurais besoin que vous me confirmiez l’adresse de livraison où l’équipement sera installé.
-
-Afin de pouvoir planifier la visite de la manière la plus efficace possible, je vous serais reconnaissant de bien vouloir me transmettre des photos de la zone d’installation, de l’entrée ainsi que du plan des locaux (si vous en disposez). De plus, si possible, nous vous remercions de bien vouloir nous envoyer une vidéo montrant l’intégralité du parcours depuis le point où la machine sera déchargée jusqu’à la pièce ou l’espace précis où elle sera installée.
-
-Je souhaite également vous indiquer quelques points importants à prendre en compte pour le jour de la livraison et du montage :
-
-• Autorisations d’occupation de la voie publique et stationnement : Il appartient au client d’effectuer à l’avance les démarches nécessaires pour obtenir les autorisations requises si le déchargement est susceptible de perturber la circulation ou d’entraîner la fermeture temporaire de la voie publique. Il est également nécessaire de réserver ou de garantir une place de stationnement aussi proche que possible de l’accès, afin de pouvoir y démonter la structure avant de la transporter jusqu’à son emplacement définitif.
-
-• Aide au transport : L’assistance d’au moins une personne sera nécessaire pour déplacer les éléments les plus volumineux lors du déchargement et de l’accès aux locaux. Selon la complexité de l’accès à la pièce où l’équipement sera installé, deux personnes peuvent être nécessaires.
-
-• Gestion des déchets : La gestion et l’évacuation des matériaux d’emballage restants (y compris les palettes et la caisse en bois utilisée pour l’emballage, qui, une fois démontée, représente environ 40 kg de bois) sont à la charge du client.
-
-Merci beaucoup pour votre collaboration et pour nous avoir communiqué ces informations avant mon arrivée. Je reste à votre disposition pour toute question.`
+        const PAISES_CONFIG = {
+            "Italia": { dias: 5, orden: 1 },
+            "España": { dias: 2, orden: 2 },
+            "Francia": { dias: 3, orden: 3 },
+            "Portugal": { dias: 3, orden: 4 },
+            "Marruecos": { dias: 5, orden: 5 },
+            "Túnez": { dias: 6, orden: 6 },
+            "Alemania": { dias: 5, orden: 7 },
+            "Bélgica": { dias: 5, orden: 8 },
+            "Holanda": { dias: 5, orden: 9 },
+            "Reino Unido": { dias: 5, orden: 10 },
+            "Suiza": { dias: 5, orden: 11 },
+            "Austria": { dias: 5, orden: 12 },
+            "Polonia": { dias: 8, orden: 13 }
         };
 
-        const textAtencion = {
-            es: `Hola, por favor, póngase en contacto con nuestro equipo de soporte técnico para resolver su problema a través de este número de WhatsApp: +34616432054`,
-            en: `Hello, please contact our technical support team to resolve your issue via this WhatsApp number: +1 555 801 6479.`,
-            it: `Ciao, per favore contatta il nostro team di supporto tecnico per risolvere il tuo problema tramite questo numero di WhatsApp: +15558016479`,
-            pt: `Olá, por favor, entre em contacto com a nossa equipa de suporte técnico para resolver o seu problema através deste número de WhatsApp: +15558016479`,
-            fr: `Bonjour, veuillez contacter notre équipe de support technique pour résoudre votre problème via ce numéro WhatsApp: +15558016479`
-        };
+        const cacheWidgets = {};
 
-        function updateInstalacionesText() {
-            const lang = document.getElementById('lang-instalaciones').value;
-            document.getElementById('preview-instalaciones').innerText = textInstalaciones[lang];
+        // ==========================================
+        // 2. FUNCIONES AUXILIARES DE LÓGICA Y GEOCODIFICACIÓN
+        // ==========================================
+
+        function obtenerColorAsignado(index) {
+            return PALETA_ARCOIRIS[index % PALETA_ARCOIRIS.length].hex;
         }
 
-        function updateAtencionText() {
-            const lang = document.getElementById('lang-atencion').value;
-            document.getElementById('preview-atencion').innerText = textAtencion[lang];
+        function extraerCiudad(direccion) {
+            if (!direccion) return 'Sin Ciudad';
+            
+            const partes = direccion.split(',');
+            if (partes.length >= 2) {
+                let posibleCiudad = partes[partes.length - 2].trim();
+                posibleCiudad = posibleCiudad.replace(/\b\d{4,5}\b/g, '').trim();
+                posibleCiudad = posibleCiudad.replace(/\b[A-Z]{2}\b/g, '').trim();
+                
+                if (posibleCiudad) return posibleCiudad;
+            }
+            return partes[0].trim();
         }
 
-        function openCifModal() {
-            document.getElementById('main-view').classList.add('hidden');
-            document.getElementById('cif-view').classList.remove('hidden');
-            document.getElementById('contact-view').classList.add('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        function calcularFechaEstimada(fechaEnvioStr, diasLaborables) {
+            if (!fechaEnvioStr) return '';
+            let fecha = new Date(fechaEnvioStr);
+            let agregados = 0;
+            while (agregados < diasLaborables) {
+                fecha.setDate(fecha.getDate() + 1);
+                if (fecha.getDay() !== 0 && fecha.getDay() !== 6) agregados++;
+            }
+            return fecha.toISOString().split('T')[0];
         }
 
-        function closeCifModal() {
-            document.getElementById('cif-view').classList.add('hidden');
-            document.getElementById('main-view').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        function limpiarTelefono(tel) {
+            return (tel || '').replace(/[^0-9]/g, '');
         }
 
-        function openContactModal() {
-            document.getElementById('main-view').classList.add('hidden');
-            document.getElementById('contact-view').classList.remove('hidden');
-            document.getElementById('cif-view').classList.add('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return 'Sin fecha';
+            const partes = fechaStr.split('-'); 
+            if (partes.length !== 3) return fechaStr;
+
+            const dia = partes[2];
+            const mesIndex = parseInt(partes[1], 10) - 1;
+            const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            return `${dia}-${meses[mesIndex] || ''}`;
         }
 
-        function closeContactModal() {
-            document.getElementById('contact-view').classList.add('hidden');
-            document.getElementById('main-view').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        function obtenerEmojiClima(codigo) {
+            if (codigo === 0) return '☀️';
+            if (codigo >= 1 && codigo <= 3) return '⛅';
+            if (codigo >= 45 && codigo <= 48) return '🌫️';
+            if (codigo >= 51 && codigo <= 67) return '🌧';
+            if (codigo >= 71 && codigo <= 77) return '❄️';
+            if (codigo >= 80 && codigo <= 82) return '🌦️';
+            if (codigo >= 95) return '🌩️';
+            return '🌤️';
         }
 
-        function copyToClipboard(text, buttonEl, originalHtml) {
-            function handleSuccess() {
-                showToast("¡Texto copiado al portapapeles con éxito!");
-                if (buttonEl) {
-                    buttonEl.classList.add('bg-slate-800');
-                    buttonEl.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> <span>¡Copiado!</span>`;
-                    setTimeout(() => {
-                        buttonEl.classList.remove('bg-slate-800');
-                        buttonEl.innerHTML = originalHtml;
-                    }, 2000);
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        async function fetchNominatim(q) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}`;
+            const res = await fetch(url, { headers: { 'Accept-Language': 'es,en' } });
+            return await res.json();
+        }
+
+        async function geolocalizarConFallback(queryInput) {
+            if (!queryInput || !queryInput.trim()) return null;
+            const query = queryInput.trim();
+
+            try {
+                let data = await fetchNominatim(query);
+
+                if (!data || data.length === 0) {
+                    const fallbackQuery = query.replace(/^.*?(\d{2}-\d{3}|\d{4,5})?[\s,]+/i, '').trim();
+                    if (fallbackQuery && fallbackQuery !== query) {
+                        data = await fetchNominatim(fallbackQuery);
+                    }
+                }
+
+                if (!data || data.length === 0) {
+                    const partes = query.split(',');
+                    if (partes.length >= 2) {
+                        const ciudadPais = partes.slice(-2).join(',').trim();
+                        data = await fetchNominatim(ciudadPais);
+                    }
+                }
+
+                if (data && data.length > 0) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon),
+                        displayName: data[0].display_name
+                    };
+                }
+            } catch (err) {
+                console.error("Error en geolocalizarConFallback:", err);
+            }
+            return null;
+        }
+
+        // ==========================================
+        // 3. OPERACIONES SUPABASE
+        // ==========================================
+
+        async function cargarInstalaciones() {
+            const { data, error } = await db
+                .from('instalaciones')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error("Error al cargar datos:", error);
+                return;
+            }
+
+            const hoy = new Date();
+            const dosSemanasEnMs = 14 * 24 * 60 * 60 * 1000;
+
+            const tbody = document.getElementById('tablaCuerpo');
+            tbody.innerHTML = '';
+            registrosCargados = [];
+
+            const btnViajes = document.getElementById('btnToggleViajes');
+            if (btnViajes) {
+                btnViajes.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+                btnViajes.classList.add('bg-sky-600', 'hover:bg-sky-700');
+            }
+
+            data.forEach((item, index) => {
+                if (item.concluido && item.fecha_concluido) {
+                    const fechaConcluido = new Date(item.fecha_concluido);
+                    if (hoy - fechaConcluido >= dosSemanasEnMs) {
+                        eliminarFila(item.id, true);
+                        return;
+                    }
+                }
+                
+                item.modo_viajes = false;
+                item.color = obtenerColorAsignado(index);
+                registrosCargados.push(item);
+                renderizarFila(item);
+            });
+        }
+
+        async function crearNuevaLinea() {
+            const nuevaInstalacion = {
+                presupuesto: '',
+                modelo: 'space',
+                pais: 'España',
+                nombre: '',
+                direccion: '',
+                confirmado: false,
+                telefono: '',
+                fecha_envio: null,
+                fecha_estimada: null,
+                fecha_instalacion: null,
+                concluido: false,
+                modo_viajes: false,
+                vuelo_ida_chk: false, vuelo_ida_nombre: '', vuelo_ida_link: '', vuelo_ida_local: '',
+                coche_chk: false, coche_nombre: '', coche_link: '',
+                hotel_chk: false, hotel_nombre: '', hotel_link: '', hotel_direccion: '',
+                vuelo_vuelta_chk: false, vuelo_vuelta_nombre: '', vuelo_vuelta_link: '', vuelo_vuelta_local: ''
+            };
+
+            const { data, error } = await db
+                .from('instalaciones')
+                .insert([nuevaInstalacion])
+                .select();
+
+            if (error) {
+                console.error("Error al crear la nueva línea:", error);
+                alert("Error al crear la nueva línea. Asegúrate de haber ejecutado el SQL de migración en Supabase.");
+                return;
+            }
+
+            if (data && data.length > 0) {
+                const item = data[0];
+                item.color = obtenerColorAsignado(registrosCargados.length);
+                registrosCargados.push(item);
+                renderizarFila(item);
+            }
+        }
+
+        async function actualizarCampo(id, campo, valor) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) item[campo] = valor;
+
+            const updateObj = { [campo]: valor };
+
+            if (campo === 'pais' || campo === 'fecha_envio') {
+                const rowElem = document.getElementById(`fila-${id}`);
+                if (rowElem) {
+                    const paisVal = campo === 'pais' ? valor : (rowElem.querySelector('.sel-pais')?.value || 'España');
+                    const envioVal = campo === 'fecha_envio' ? valor : (rowElem.querySelector('.inp-envio')?.value || '');
+                    
+                    const dias = PAISES_CONFIG[paisVal] ? PAISES_CONFIG[paisVal].dias : 3;
+                    const nuevaEstimada = calcularFechaEstimada(envioVal, dias);
+                    
+                    updateObj['fecha_estimada'] = nuevaEstimada || null;
+                    const inpEstimada = rowElem.querySelector('.inp-estimada');
+                    if (inpEstimada) inpEstimada.value = nuevaEstimada;
+                    if (item) item.fecha_estimada = nuevaEstimada;
                 }
             }
 
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(handleSuccess).catch(() => {
-                    fallbackCopy(text, handleSuccess);
-                });
+            if (campo === 'concluido') {
+                updateObj['fecha_concluido'] = valor ? new Date().toISOString() : null;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+        }
+
+        async function eliminarFila(id, silencioso = false) {
+            if (!silencioso && !confirm("¿Seguro que deseas eliminar esta línea?")) return;
+
+            const { error } = await db.from('instalaciones').delete().eq('id', id);
+            if (!error) {
+                const elem = document.getElementById(`fila-${id}`);
+                if (elem) elem.remove();
+                registrosCargados = registrosCargados.filter(r => r.id !== id);
+            }
+        }
+
+        // ==========================================
+        // 4. RENDERIZADO EN TABLA Y VIAJES
+        // ==========================================
+
+        function toggleModoViajesGeneral() {
+            modoViajesGlobal = !modoViajesGlobal;
+            const btn = document.getElementById('btnToggleViajes');
+            if (modoViajesGlobal) {
+                btn.classList.remove('bg-sky-600', 'hover:bg-sky-700');
+                btn.classList.add('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
             } else {
-                fallbackCopy(text, handleSuccess);
+                btn.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
+                btn.classList.add('bg-sky-600', 'hover:bg-sky-700');
+            }
+
+            registrosCargados.forEach(item => {
+                item.modo_viajes = modoViajesGlobal;
+                actualizarCampo(item.id, 'modo_viajes', modoViajesGlobal);
+                rerenderFilaContent(item.id);
+            });
+        }
+
+        function toggleModoViajesIndividual(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.modo_viajes = !item.modo_viajes;
+                actualizarCampo(id, 'modo_viajes', item.modo_viajes);
+                rerenderFilaContent(id);
             }
         }
 
-        function fallbackCopy(text, callback) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            textArea.style.top = "-999999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
+        function toggleModoEnviosGeneral() {
+            modoEnviosGlobal = !modoEnviosGlobal;
+            const btn = document.getElementById('btnToggleEnvios');
+            if (modoEnviosGlobal) {
+                btn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
+                btn.classList.add('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
+            } else {
+                btn.classList.remove('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
+                btn.classList.add('bg-orange-600', 'hover:bg-orange-700');
+            }
+
+            registrosCargados.forEach(item => {
+                item.modo_envios = modoEnviosGlobal;
+                actualizarCampo(item.id, 'modo_envios', modoEnviosGlobal);
+                rerenderFilaContent(item.id);
+            });
+        }
+
+        function toggleModoEnviosIndividual(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.modo_envios = !item.modo_envios;
+                actualizarCampo(id, 'modo_envios', item.modo_envios);
+                rerenderFilaContent(id);
+            }
+        }
+
+        function rerenderFilaContent(id) {
+            const tr = document.getElementById(`fila-${id}`);
+            const item = registrosCargados.find(r => r.id === id);
+            if (tr && item) {
+                tr.innerHTML = obtenerHTMLContenidoFila(item);
+                actualizarBotonNota(id);
+                if (item.modo_viajes) {
+                    cargarWidgetsDestino(item);
+                }
+            }
+        }
+
+        function renderizarBloqueViaje(item, clave, tituloDefault) {
+            const chk = item[`${clave}_chk`] || false;
+            const nombre = (item[`${clave}_nombre`] || '').trim();
+            const link = (item[`${clave}_link`] || '').trim();
+            const hotelDireccion = (item[`hotel_direccion`] || '').trim();
+            const textoMostrar = nombre || tituloDefault;
+
+            let elementoTextoHTML = '';
+
+            // CASO 1: Campo sin ningún texto ni nombre (Vacio)
+            if (!nombre && !link && !(clave === 'hotel' && hotelDireccion)) {
+                elementoTextoHTML = `<span class="text-slate-400 opacity-60 text-xs font-medium truncate max-w-[120px] select-none pointer-events-none" title="Sin datos">${tituloDefault}</span>`;
+            } 
+            // CASO 2: Checkbox PALOMITEADO (Activado)
+            else if (chk) {
+                if (clave === 'vuelo_ida' || clave === 'vuelo_vuelta') {
+                    elementoTextoHTML = `<button onclick="abrirModalVerVuelo('${item.id}', '${clave}')" class="text-indigo-600 font-bold hover:underline truncate max-w-[120px] text-left text-xs" title="Ver detalles del vuelo">${textoMostrar}</button>`;
+                } else if (clave === 'hotel') {
+                    const dirDestino = hotelDireccion || item.direccion;
+                    const hotelHref = dirDestino ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dirDestino)}` : '#';
+                    elementoTextoHTML = `<a href="${hotelHref}" target="_blank" class="text-indigo-600 font-bold hover:underline truncate max-w-[120px] text-xs" title="${textoMostrar}">${textoMostrar}</a>`;
+                } else {
+                    // Coche
+                    const cocheHref = link || '#';
+                    elementoTextoHTML = link ? `<a href="${cocheHref}" target="_blank" class="text-indigo-600 font-bold hover:underline truncate max-w-[120px] text-xs" title="${textoMostrar}">${textoMostrar}</a>`
+                                             : `<span class="text-slate-800 font-semibold text-xs truncate max-w-[120px]">${textoMostrar}</span>`;
+                }
+            } 
+            // CASO 3: Checkbox NO Palomiteado -> Texto Simple en Negro
+            else {
+                if (link) {
+                    elementoTextoHTML = `<a href="${link}" target="_blank" class="text-slate-800 hover:text-indigo-600 font-medium hover:underline truncate max-w-[120px] text-xs" title="${textoMostrar}">${textoMostrar}</a>`;
+                } else {
+                    elementoTextoHTML = `<span class="text-slate-800 font-medium text-xs truncate max-w-[120px] select-text" title="${textoMostrar}">${textoMostrar}</span>`;
+                }
+            }
+
+            return `
+                <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                    <input type="checkbox" ${chk ? 'checked' : ''} class="w-4 h-4 accent-indigo-600 rounded cursor-pointer shrink-0" onchange="actualizarCampo('${item.id}', '${clave}_chk', this.checked); rerenderFilaContent('${item.id}')">
+                    <div class="flex items-center gap-1 overflow-hidden">
+                        ${elementoTextoHTML}
+                        <button onclick="abrirModalViaje('${item.id}', '${clave}', '${tituloDefault}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar ${tituloDefault}">✏️</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function obtenerHTMLContenidoFila(item) {
+            const mapLink = item.direccion ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}` : '#';
+            const telLimpio = limpiarTelefono(item.telefono);
+            const wspLink = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            if (item.modo_envios) {
+                return obtenerHTMLFilaEnvios(item);
+            }
+
+            if (item.modo_viajes) {
+                const ciudad = extraerCiudad(item.direccion);
+                const fechaFormateada = formatearFecha(item.fecha_instalacion);
+
+                return `
+                    <td colspan="11" class="p-2">
+                        <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                                <a href="${mapLink}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-indigo-500 hover:text-indigo-600 transition" title="Ver en Google Maps">
+                                    <span>📍 ${ciudad}</span>
+                                    <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
+                                </a>
+                            </div>
+
+                            <div class="flex items-center gap-3 shrink-0">
+                                ${renderizarBloqueViaje(item, 'vuelo_ida', 'Vuelo ida')}
+                                ${renderizarBloqueViaje(item, 'coche', 'Coche')}
+                                ${renderizarBloqueViaje(item, 'hotel', 'Hotel')}
+                                ${renderizarBloqueViaje(item, 'vuelo_vuelta', 'Vuelo vuelta')}
+                            </div>
+
+                            <div id="widget-info-${item.id}" class="flex items-center gap-2 text-xs bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
+                                <span class="text-slate-400 italic">Cargando datos...</span>
+                            </div>
+
+                            <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
+                                ↩ Datos Predeterminados
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-2 text-center shrink-0">
+                        <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                    </td>
+                `;
+            }
+
+            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => 
+                `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`
+            ).join('');
+
+            const attrFechaInstalacion = esEditor ? '' : 'readonly tabindex="-1"';
+
+            return `
+                <td class="p-2 text-center">
+                    <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                </td>
+                <td class="p-2">
+                    <input type="text" value="${item.presupuesto || ''}" onchange="actualizarCampo('${item.id}', 'presupuesto', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Presup.">
+                </td>
+                <td class="p-2">
+                    <select onchange="actualizarCampo('${item.id}', 'modelo', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                        <option value="space" ${item.modelo === 'space' ? 'selected' : ''}>SPACE</option>
+                        <option value="bike" ${item.modelo === 'bike' ? 'selected' : ''}>BIKE</option>
+                    </select>
+                </td>
+                <td class="p-2">
+                    <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                        ${opcionesPaises}
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="text" value="${item.nombre || ''}" onchange="actualizarCampo('${item.id}', 'nombre', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Nombre cliente">
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <input type="text" dir="rtl" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion w-72 p-1 border border-slate-300 rounded text-xs text-left" placeholder="Dirección completa">
+                        <a id="map-link-${item.id}" href="${mapLink}" target="_blank" class="text-slate-600 hover:text-indigo-600 p-1" title="Ver en Google Maps">🗺️</a>
+                    </div>
+                </td>
+                <td class="p-2 text-center">
+                    <input type="checkbox" ${item.confirmado ? 'checked' : ''} onchange="actualizarCampo('${item.id}', 'confirmado', this.checked)" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
+                </td>
+                <td class="p-2">
+                    <div id="tel-view-${item.id}" class="flex items-center justify-between gap-1">
+                        <a id="wsp-link-${item.id}" href="${wspLink}" target="_blank" class="text-emerald-700 font-medium hover:underline text-xs truncate max-w-[100px]">${item.telefono || 'Añadir'}</a>
+                        <button onclick="comenzarEdicionTel('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs">✏️</button>
+                    </div>
+                    <div id="tel-edit-${item.id}" class="hidden flex items-center gap-1">
+                        <input id="tel-input-${item.id}" type="text" value="${item.telefono || ''}" class="w-full p-1 border border-slate-300 rounded text-xs">
+                        <button onclick="guardarTel('${item.id}')" class="bg-indigo-600 text-white text-xs px-1.5 py-1 rounded">✓</button>
+                    </div>
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_envio || ''}" onchange="actualizarCampo('${item.id}', 'fecha_envio', this.value)" class="inp-envio w-full p-1 border border-slate-300 rounded text-xs">
+                </td>
+                <td class="p-2">
+                    <input type="date" value="${item.fecha_estimada || ''}" class="inp-estimada w-full p-1 border border-slate-300 rounded text-xs bg-slate-100" readonly>
+                </td>
+                <td class="p-2">
+                    <div class="flex items-center gap-1">
+                        <input type="date" value="${item.fecha_instalacion || ''}" ${attrFechaInstalacion} onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)" class="inp-fecha-instalacion w-full p-1 border border-slate-300 rounded text-xs">
+                        <button onclick="toggleModoViajesIndividual('${item.id}')" class="btn-viaje-individual bg-sky-600 hover:bg-sky-700 text-white text-xs px-1.5 py-1 rounded shadow" title="Configurar Viaje">✈️</button>
+                    </div>
+                </td>
+                <td class="p-2 text-center col-concluido">
+                    <input type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleConcluido('${item.id}', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">
+                </td>
+                <td class="p-2 text-center">
+                    <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                </td>
+            `;
+        }
+
+        function obtenerHTMLFilaEnvios(item) {
+            const ciudad = extraerCiudad(item.direccion);
+            const fechaFormateada = formatearFecha(item.fecha_instalacion);
+            const pmeTrack = (item.envio_pme_track || '').trim();
+            const local = (item.envio_local || '').trim();
+            const telefono = (item.envio_telefono || '').trim();
+
+            return `
+                <td colspan="11" class="p-2">
+                    <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
+                            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-orange-500 hover:text-orange-600 transition" title="Ver en Google Maps">
+                                <span>📍 ${ciudad}</span>
+                                <span class="text-xs font-normal text-slate-600">(${fechaFormateada})</span>
+                            </a>
+                        </div>
+
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">PME:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${pmeTrack || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">Local:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${local || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                                <span class="text-xs text-slate-500">Tel:</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[100px]">${telefono || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
+                            </div>
+                        </div>
+
+                        <button onclick="toggleModoEnviosIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
+                            ↩ Datos Predeterminados
+                        </button>
+                    </div>
+                </td>
+                <td class="p-2 text-center shrink-0">
+                    <button onclick="eliminarFila('${item.id}')" class="btn-eliminar-fila text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar fila">🗑️</button>
+                </td>
+            `;
+        }
+
+        function abrirModalEnvio(id) {
+            modalEdicionActual = { id, campo: 'envio' };
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('modalEnvioPmeTrack').value = item.envio_pme_track || '';
+            document.getElementById('modalEnvioLocal').value = item.envio_local || '';
+            document.getElementById('modalEnvioTelefono').value = item.envio_telefono || '';
+
+            document.getElementById('modalEditarEnvio').classList.remove('hidden');
+        }
+
+        async function guardarDetalleEnvioModal() {
+            const { id } = modalEdicionActual;
+            if (!id) return;
+
+            const pmeTrackVal = document.getElementById('modalEnvioPmeTrack').value.trim();
+            const localVal = document.getElementById('modalEnvioLocal').value.trim();
+            const telefonoVal = document.getElementById('modalEnvioTelefono').value.trim();
+
+            if (telefonoVal && (telefonoVal.length < 4 || telefonoVal.length > 11)) {
+                alert('El teléfono debe tener entre 4 y 11 dígitos');
+                return;
+            }
+
+            const item = registrosCargados.find(r => r.id === id);
+            const updateObj = {
+                envio_pme_track: pmeTrackVal,
+                envio_local: localVal,
+                envio_telefono: telefonoVal
+            };
+
+            if (item) {
+                item.envio_pme_track = pmeTrackVal;
+                item.envio_local = localVal;
+                item.envio_telefono = telefonoVal;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            cerrarModal('modalEditarEnvio');
+            rerenderFilaContent(id);
+        }
+
+        function abrirModalNota(id) {
+            modalNotaActual = { id };
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('modalNotaTexto').value = item.nota || '';
+            document.getElementById('modalNota').classList.remove('hidden');
+        }
+
+        async function guardarNotaModal() {
+            const { id } = modalNotaActual;
+            if (!id) return;
+
+            const notaVal = document.getElementById('modalNotaTexto').value.trim();
+
+            const item = registrosCargados.find(r => r.id === id);
+            if (item) {
+                item.nota = notaVal;
+            }
+
+            await db.from('instalaciones').update({ nota: notaVal }).eq('id', id);
+
+            cerrarModal('modalNota');
+            actualizarBotonNota(id);
+        }
+
+        function actualizarBotonNota(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            const botones = document.querySelectorAll(`button[onclick="abrirModalNota('${id}')"]`);
+            botones.forEach(btn => {
+                const nota = (item.nota || '').trim();
+                if (nota) {
+                    const colorComplementario = obtenerColorComplementario(item.color);
+                    btn.style.textShadow = `0 0 8px ${colorComplementario}, 0 0 16px ${colorComplementario}`;
+                    btn.classList.add('nota-activa');
+                } else {
+                    btn.style.textShadow = '';
+                    btn.classList.remove('nota-activa');
+                }
+            });
+        }
+
+        function obtenerColorComplementario(hexColor) {
+            const r = parseInt(hexColor.slice(1, 3), 16);
+            const g = parseInt(hexColor.slice(3, 5), 16);
+            const b = parseInt(hexColor.slice(5, 7), 16);
+
+            const rComp = 255 - r;
+            const gComp = 255 - g;
+            const bComp = 255 - b;
+
+            return `rgb(${rComp}, ${gComp}, ${bComp})`;
+        }
+
+        function renderizarFila(item) {
+            const tbody = document.getElementById('tablaCuerpo');
+            const tr = document.createElement('tr');
+            tr.id = `fila-${item.id}`;
+            tr.className = `transition duration-150 ${item.concluido ? 'concluido-row' : ''}`;
+            tr.style.backgroundColor = item.color;
+            tr.innerHTML = obtenerHTMLContenidoFila(item);
+            tbody.appendChild(tr);
+
+            actualizarBotonNota(item.id);
+
+            if (item.modo_viajes) {
+                cargarWidgetsDestino(item);
+            }
+        }
+
+        // ==========================================
+        // 5. MODALES DE EDICIÓN Y VISUALIZACIÓN DE VUELO
+        // ==========================================
+
+        function abrirModalViaje(id, campo, titulo) {
+            modalEdicionActual = { id, campo };
+            const item = registrosCargados.find(r => r.id === id);
+            
+            document.getElementById('tituloModalViaje').innerText = `Editar ${titulo}`;
+            document.getElementById('modalViajeNombre').value = item[`${campo}_nombre`] || '';
+            document.getElementById('modalViajeLink').value = item[`${campo}_link`] || '';
+            
+            const contTercero = document.getElementById('contenedorModalViajeTercerCampo');
+            const labelTercero = document.getElementById('labelModalViajeTercero');
+
+            if (campo === 'hotel') {
+                contTercero.classList.remove('hidden');
+                labelTercero.innerText = 'Dirección del Hotel';
+                document.getElementById('modalViajeTercero').value = item[`hotel_direccion`] || '';
+                document.getElementById('modalViajeTercero').placeholder = 'Calle, Número, Ciudad, País';
+            } else if (campo === 'vuelo_ida' || campo === 'vuelo_vuelta') {
+                contTercero.classList.remove('hidden');
+                labelTercero.innerText = 'Reserva / Aerolínea';
+                document.getElementById('modalViajeTercero').value = item[`${campo}_local`] || '';
+                document.getElementById('modalViajeTercero').placeholder = 'G62QYT/Ryanair';
+            } else {
+                contTercero.classList.add('hidden');
+            }
+            
+            document.getElementById('modalEditarViaje').classList.remove('hidden');
+        }
+
+        async function guardarDetalleViajeModal() {
+            const { id, campo } = modalEdicionActual;
+            if (!id || !campo) return;
+
+            const nombreVal = document.getElementById('modalViajeNombre').value.trim();
+            const linkVal = document.getElementById('modalViajeLink').value.trim();
+            const terceroVal = document.getElementById('modalViajeTercero').value.trim();
+
+            const item = registrosCargados.find(r => r.id === id);
+            const updateObj = {
+                [`${campo}_nombre`]: nombreVal,
+                [`${campo}_link`]: linkVal
+            };
+
+            if (item) {
+                item[`${campo}_nombre`] = nombreVal;
+                item[`${campo}_link`] = linkVal;
+            }
+
+            if (campo === 'hotel') {
+                updateObj['hotel_direccion'] = terceroVal;
+                if (item) item['hotel_direccion'] = terceroVal;
+            } else if (campo === 'vuelo_ida' || campo === 'vuelo_vuelta') {
+                updateObj[`${campo}_local`] = terceroVal;
+                if (item) item[`${campo}_local`] = terceroVal;
+            }
+
+            await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            cerrarModal('modalEditarViaje');
+            rerenderFilaContent(id);
+        }
+
+        function abrirModalVerVuelo(id, campo) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+
+            const valorTercero = (item[`${campo}_local`] || '').trim();
+            let reserva = 'No especificado';
+            let aerolinea = 'No especificada';
+
+            if (valorTercero) {
+                if (valorTercero.includes('/')) {
+                    const partes = valorTercero.split('/');
+                    reserva = partes[0].trim() || 'No especificado';
+                    aerolinea = partes.slice(1).join('/').trim() || 'No especificada';
+                } else {
+                    reserva = valorTercero;
+                }
+            }
+
+            const titulo = campo === 'vuelo_ida' ? '✈️ Vuelo de Ida' : '✈️ Vuelo de Vuelta';
+            document.getElementById('tituloVerVuelo').innerText = titulo;
+            document.getElementById('verCodigoReserva').innerText = reserva;
+            document.getElementById('verNombreAerolinea').innerText = aerolinea;
+
+            document.getElementById('modalVerVuelo').classList.remove('hidden');
+        }
+
+        function copiarCodigoReserva() {
+            const codigo = document.getElementById('verCodigoReserva').innerText;
+            if (codigo && codigo !== '------' && codigo !== 'No especificado') {
+                navigator.clipboard.writeText(codigo).then(() => {
+                    alert(`Código de reserva copiado: ${codigo}`);
+                }).catch(err => {
+                    console.error('Error al copiar:', err);
+                });
+            }
+        }
+
+        // ==========================================
+        // 6. OBTENCIÓN DE WIDGETS (CLIMA Y NUMBEO)
+        // ==========================================
+
+        async function cargarWidgetsDestino(item) {
+            const contenedor = document.getElementById(`widget-info-${item.id}`);
+            if (!contenedor) return;
+
+            const direccionOCiudad = item.direccion || '';
+            const ciudad = extraerCiudad(direccionOCiudad);
+            if (!direccionOCiudad || ciudad === 'Sin Ciudad') {
+                contenedor.innerHTML = `<span class="text-slate-400 italic">Dirección requerida</span>`;
+                return;
+            }
+
+            const keyCache = `${ciudad}_${item.fecha_instalacion || 'hoy'}`;
+            if (cacheWidgets[keyCache]) {
+                contenedor.innerHTML = cacheWidgets[keyCache];
+                return;
+            }
+
             try {
-                document.execCommand('copy');
-                if (callback) callback();
+                const geoData = await geolocalizarConFallback(direccionOCiudad);
+
+                let htmlClima = '🌤️ N/A';
+                let htmlNumbeo = '🚶‍♂️☀️ N/A 🌙 N/A';
+
+                if (geoData) {
+                    const lat = geoData.lat;
+                    const lon = geoData.lon;
+
+                    let fechaUrl = '';
+                    if (item.fecha_instalacion) {
+                        fechaUrl = `&start_date=${item.fecha_instalacion}&end_date=${item.fecha_instalacion}`;
+                    }
+                    const meteoRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto${fechaUrl}`);
+                    const meteoData = await meteoRes.json();
+
+                    if (meteoData && meteoData.daily) {
+                        const code = meteoData.daily.weathercode[0];
+                        const tMin = Math.round(meteoData.daily.temperature_2m_min[0]);
+                        const tMax = Math.round(meteoData.daily.temperature_2m_max[0]);
+                        const probLluvia = meteoData.daily.precipitation_probability_max ? meteoData.daily.precipitation_probability_max[0] : 0;
+                        const emoji = obtenerEmojiClima(code);
+
+                        htmlClima = `<span>${emoji}</span> <span>🌧️ ${probLluvia}%</span> <span class="text-blue-600 font-bold">${tMin}°C</span> / <span class="text-red-600 font-bold">${tMax}°C</span>`;
+                    }
+
+                    let puntoMasCercano = null;
+                    let menorDistancia = Infinity;
+
+                    NUMBEO_DATASET.forEach(punto => {
+                        const dist = calcularDistancia(lat, lon, punto.lat, punto.lng);
+                        if (dist < menorDistancia) {
+                            menorDistancia = dist;
+                            puntoMasCercano = punto;
+                        }
+                    });
+
+                    if (puntoMasCercano) {
+                        htmlNumbeo = `<a href="${puntoMasCercano.url}" target="_blank" class="hover:underline flex items-center gap-1" title="Punto Numbeo: ${puntoMasCercano.city} (a ${menorDistancia.toFixed(1)} km)"><span>🚶‍♂️☀️ ${puntoMasCercano.daylight}</span> <span class="ml-1">🌙 ${puntoMasCercano.night}</span></a>`;
+                    }
+                }
+
+                const finalHTML = `
+                    <div class="flex items-center gap-2 border-r border-slate-200 pr-2">
+                        ${htmlClima}
+                    </div>
+                    <div class="flex items-center gap-1">
+                        ${htmlNumbeo}
+                    </div>
+                `;
+
+                cacheWidgets[keyCache] = finalHTML;
+                contenedor.innerHTML = finalHTML;
+
             } catch (err) {
-                console.error('Error al copiar', err);
+                console.error("Error recuperando widgets de viaje:", err);
+                contenedor.innerHTML = `<span class="text-slate-400 italic">Información no disponible</span>`;
             }
-            document.body.removeChild(textArea);
         }
 
-        function copyCifData(btn) {
-            const formattedData = `Denominación: I-MOTION GROUP GLOBAL IBERICA SL.
-NIF: B86999273
-Domicilio social actual: CALLE LABRADORES (POL INDUSTRIAL PRADO DEL ESPINO), 13
-Código Postal: 28660
-Municipio: BOADILLA DEL MONTE
-Provincia: Madrid`;
-            const origHtml = btn.innerHTML;
-            copyToClipboard(formattedData, btn, origHtml);
+        // ==========================================
+        // 7. CALENDARIO
+        // ==========================================
+
+        function abrirModalCalendario() {
+            document.getElementById('modalCalendario').classList.remove('hidden');
+            renderizarCalendario();
         }
 
-        function copyInstalacionesText(btn) {
-            const lang = document.getElementById('lang-instalaciones').value;
-            const origHtml = btn.innerHTML;
-            copyToClipboard(textInstalaciones[lang], btn, origHtml);
+        function cambiarMes(delta) {
+            fechaCalendarioActual.setMonth(fechaCalendarioActual.getMonth() + delta);
+            renderizarCalendario();
         }
 
-        function copyAtencionText(btn) {
-            const lang = document.getElementById('lang-atencion').value;
-            const origHtml = btn.innerHTML;
-            copyToClipboard(textAtencion[lang], btn, origHtml);
+        function renderizarCalendario() {
+            const contenedor = document.getElementById('diasCalendario');
+            contenedor.innerHTML = '';
+
+            const año = fechaCalendarioActual.getFullYear();
+            const mes = fechaCalendarioActual.getMonth();
+
+            const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            document.getElementById('mesAñoLabel').innerText = `${nombresMeses[mes]} ${año}`;
+
+            const primerDia = new Date(año, mes, 1);
+            const ultimoDia = new Date(año, mes + 1, 0);
+
+            let diaSemanaInicio = primerDia.getDay() - 1;
+            if (diaSemanaInicio === -1) diaSemanaInicio = 6;
+
+            for (let i = 0; i < diaSemanaInicio; i++) {
+                const divVacio = document.createElement('div');
+                divVacio.className = 'bg-white h-24 rounded-md';
+                contenedor.appendChild(divVacio);
+            }
+
+            for (let d = 1; d <= ultimoDia.getDate(); d++) {
+                const celda = document.createElement('div');
+                celda.className = 'bg-white h-24 rounded-md p-1 flex flex-col justify-between overflow-hidden text-xs border border-slate-100';
+
+                const fechaKey = `${año}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const instalacionesDelDia = registrosCargados.filter(item => item.fecha_instalacion === fechaKey);
+
+                const numDia = document.createElement('div');
+                numDia.className = 'font-bold text-slate-700 text-right pr-1';
+                numDia.innerText = d;
+                celda.appendChild(numDia);
+
+                const listaContenedor = document.createElement('div');
+                listaContenedor.className = 'flex-1 flex flex-col justify-center overflow-hidden';
+
+                if (instalacionesDelDia.length > 0) {
+                    instalacionesDelDia.forEach((item, idx) => {
+                        const bloque = document.createElement('div');
+                        bloque.className = 'flex items-center justify-center font-bold text-[10px] px-1 py-0.5 truncate rounded';
+                        bloque.style.backgroundColor = item.color;
+                        bloque.innerText = extraerCiudad(item.direccion);
+                        
+                        listaContenedor.appendChild(bloque);
+
+                        if (idx < instalacionesDelDia.length - 1) {
+                            const linea = document.createElement('hr');
+                            linea.className = 'border-t border-slate-400 my-0.5';
+                            listaContenedor.appendChild(linea);
+                        }
+                    });
+                }
+
+                celda.appendChild(listaContenedor);
+                contenedor.appendChild(celda);
+            }
         }
 
-        function copyPhoneNumber(btn) {
-            const origHtml = btn.innerHTML;
-            copyToClipboard('+34 618 24 18 34', btn, origHtml);
+        // ==========================================
+        // 8. MAPA
+        // ==========================================
+
+        function abrirModalMapa() {
+            const modal = document.getElementById('modalMapa');
+            modal.classList.remove('hidden');
+
+            requestAnimationFrame(() => {
+                if (!mapaLeaflet) {
+                    mapaLeaflet = L.map('mapaContenedor').setView([40.4167, -3.7037], 5);
+                    
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Tiles &copy; Esri',
+                        maxZoom: 18
+                    }).addTo(mapaLeaflet);
+                }
+
+                mapaLeaflet.invalidateSize();
+                cargarMarcadoresMapa();
+            });
         }
 
-        let toastTimeout;
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toast-message');
-            toastMsg.textContent = message;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 2500);
+        function toggleVisibilidadMapa(id) {
+            if (elementosOcultosMapa.has(id)) {
+                elementosOcultosMapa.delete(id);
+            } else {
+                elementosOcultosMapa.add(id);
+            }
+            actualizarEstadoMapa();
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            updateInstalacionesText();
-            updateAtencionText();
-        });
+        function actualizarEstadoMapa() {
+            registrosCargados.forEach(item => {
+                const etiqueta = document.getElementById(`etiqueta-mapa-${item.id}`);
+                const marcador = marcadoresMapa[item.id];
+
+                if (elementosOcultosMapa.has(item.id)) {
+                    if (etiqueta) {
+                        etiqueta.style.backgroundColor = '#e2e8f0';
+                        etiqueta.style.color = '#64748b';
+                        etiqueta.classList.add('grayscale', 'opacity-60', 'line-through');
+                    }
+                    if (marcador && mapaLeaflet.hasLayer(marcador)) {
+                        mapaLeaflet.removeLayer(marcador);
+                    }
+                } else {
+                    if (etiqueta) {
+                        etiqueta.style.backgroundColor = item.color;
+                        etiqueta.style.color = '#1e293b';
+                        etiqueta.classList.remove('grayscale', 'opacity-60', 'line-through');
+                    }
+                    if (marcador && !mapaLeaflet.hasLayer(marcador)) {
+                        mapaLeaflet.addLayer(marcador);
+                    }
+                }
+            });
+        }
+
+        async function cargarMarcadoresMapa() {
+            if (!mapaLeaflet) return;
+
+            Object.keys(marcadoresMapa).forEach(id => {
+                if (mapaLeaflet.hasLayer(marcadoresMapa[id])) {
+                    mapaLeaflet.removeLayer(marcadoresMapa[id]);
+                }
+                delete marcadoresMapa[id];
+            });
+
+            const leyendaContenedor = document.getElementById('leyendaMapa');
+            leyendaContenedor.innerHTML = '';
+
+            const registrosValidos = registrosCargados.filter(item => !item.concluido && item.direccion);
+
+            if (registrosValidos.length === 0) {
+                leyendaContenedor.innerHTML = '<span class="text-sm text-slate-400 italic">No hay instalaciones activas para mostrar en el mapa.</span>';
+                return;
+            }
+
+            registrosValidos.forEach(item => {
+                const ciudad = extraerCiudad(item.direccion);
+                const fechaFormateada = formatearFecha(item.fecha_instalacion);
+                const estaOculto = elementosOcultosMapa.has(item.id);
+
+                const etiqueta = document.createElement('div');
+                etiqueta.id = `etiqueta-mapa-${item.id}`;
+                etiqueta.className = `px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-slate-300 flex items-center gap-2 shrink-0 cursor-pointer select-none transition-all duration-200 hover:scale-105 ${estaOculto ? 'grayscale opacity-60 line-through' : ''}`;
+                etiqueta.style.backgroundColor = estaOculto ? '#e2e8f0' : item.color;
+                etiqueta.style.color = estaOculto ? '#1e293b' : '#1e293b';
+                
+                etiqueta.onclick = () => toggleVisibilidadMapa(item.id);
+
+                etiqueta.innerHTML = `<span>📍 ${ciudad}</span> <span class="text-[11px] font-normal opacity-80">(${fechaFormateada})</span>`;
+                leyendaContenedor.appendChild(etiqueta);
+            });
+
+            for (const item of registrosValidos) {
+                try {
+                    const dataGeo = await geolocalizarConFallback(item.direccion);
+                    
+                    if (dataGeo) {
+                        const lat = dataGeo.lat;
+                        const lon = dataGeo.lon;
+                        const ciudad = extraerCiudad(item.direccion);
+                        const fechaFormateada = formatearFecha(item.fecha_instalacion);
+
+                        const pinSvg = `
+                            <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="${item.color}" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.4));">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
+                                </svg>
+                            </div>`;
+
+                        const iconoColor = L.divIcon({
+                            className: '',
+                            html: pinSvg,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -30]
+                        });
+
+                        const marcador = L.marker([lat, lon], { icon: iconoColor }).bindPopup(`
+                            <div style="text-align: center; font-family: sans-serif;">
+                                <div style="background-color: ${item.color}; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-bottom: 4px; border: 1px solid #cbd5e1;">
+                                    ${ciudad}
+                                </div>
+                                <b>${item.nombre || 'Instalación'}</b><br>
+                                <small>${item.direccion}</small><br>
+                                <small><b>F. Instalación:</b> ${fechaFormateada}</small>
+                            </div>
+                        `);
+
+                        marcadoresMapa[item.id] = marcador;
+
+                        if (!elementosOcultosMapa.has(item.id)) {
+                            marcador.addTo(mapaLeaflet);
+                        }
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1200));
+
+                } catch (e) {
+                    console.error("Error al obtener coordenadas:", item.direccion, e);
+                }
+            }
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // ==========================================
+        // 9. EVENTOS E INTERFAZ
+        // ==========================================
+
+        function toggleConcluido(id, estado) {
+            const row = document.getElementById(`fila-${id}`);
+            if (estado) row.classList.add('concluido-row');
+            else row.classList.remove('concluido-row');
+            
+            actualizarCampo(id, 'concluido', estado);
+
+            if (!document.getElementById('modalMapa').classList.contains('hidden')) {
+                cargarMarcadoresMapa();
+            }
+        }
+
+        function comenzarEdicionTel(id) {
+            document.getElementById(`tel-view-${id}`).classList.add('hidden');
+            document.getElementById(`tel-edit-${id}`).classList.remove('hidden');
+            document.getElementById(`tel-input-${id}`).focus();
+        }
+
+        function guardarTel(id) {
+            const input = document.getElementById(`tel-input-${id}`);
+            const val = input.value.trim();
+            const telLimpio = limpiarTelefono(val);
+
+            const wspLink = document.getElementById(`wsp-link-${id}`);
+            wspLink.innerText = val;
+            wspLink.href = telLimpio ? `https://api.whatsapp.com/send?phone=${telLimpio}&text=%F0%9F%91%8B` : '#';
+
+            document.getElementById(`tel-edit-${id}`).classList.add('hidden');
+            document.getElementById(`tel-view-${id}`).classList.remove('hidden');
+
+            actualizarCampo(id, 'telefono', val);
+        }
+
+        function actualizarLinks(id) {
+            const row = document.getElementById(`fila-${id}`);
+            if (!row) return;
+            const inpDir = row.querySelector('.inp-direccion');
+            if (inpDir) {
+                const dir = inpDir.value;
+                const mapLink = document.getElementById(`map-link-${id}`);
+                if (mapLink) mapLink.href = dir ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dir)}` : '#';
+            }
+        }
+
+        document.getElementById('btnNuevaLinea').addEventListener('click', crearNuevaLinea);
+        window.addEventListener('DOMContentLoaded', cargarInstalaciones);
     </script>
 </body>
 </html>
