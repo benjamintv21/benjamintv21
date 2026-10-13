@@ -37,19 +37,31 @@
         background-color: #f1f5f9 !important; /* slate-100 */
         color: #64748b;
     }
+
+    /* Botones de la cabecera: evitar que el texto se parta en dos líneas */
+    #btnToggleViajes,
+    #btnToggleEnvios,
+    #btnAbrirMapa,
+    #btnAbrirCalendario,
+    #btnNuevaLinea {
+        white-space: nowrap;
+    }
+
+    /* Reparto de anchos de la tabla para que las columnas no queden ni enormes ni diminutas */
+    table .inp-direccion { min-width: 0; }
 </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
+<body class="bg-slate-100 min-h-screen p-2 sm:p-4 md:p-8 text-slate-800">
 
-    <div class="max-w-[100%] mx-auto bg-white rounded-xl shadow-lg p-6">
+    <div class="max-w-[100%] mx-auto bg-white rounded-xl shadow-lg p-3 sm:p-5 md:p-6">
         <!-- Cabecera -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-200 gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-slate-800">📌 Organizador de Instalaciones</h1>
+                <h1 class="text-xl md:text-2xl font-bold text-slate-800">📌 Organizador de Instalaciones</h1>
                 <p class="text-sm text-slate-500">Gestión de envíos e instalaciones conectada a Supabase</p>
             </div>
             
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <!-- Botón Viajes -->
                 <button id="btnToggleViajes" onclick="toggleModoViajesGeneral()" class="bg-sky-600 hover:bg-sky-700 text-white font-medium px-3 py-2 rounded-lg shadow transition duration-150 flex items-center gap-1" title="Alternar Vista de Viajes">
                     <span>✈️</span> Viajes
@@ -75,22 +87,22 @@
 
         <!-- Tabla -->
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse min-w-[1200px]">
+            <table class="w-full text-left border-collapse min-w-[1100px]">
                 <thead>
-                    <tr class="bg-slate-800 text-white text-xs uppercase tracking-wider">
-                        <th class="p-3 rounded-tl-lg w-20">Presup.</th>
-                        <th class="p-3 w-28">Modelo</th>
-                        <th class="p-3 text-center col-concluido">Concluido</th>
-                        <th class="p-3 w-28">País</th>
-                        <th class="p-3">Nombre</th>
-                        <th class="p-3 min-w-[280px]">Dirección de Entrega</th>
-                        <th class="p-3 text-center">Confirmado</th>
-                        <th class="p-3">Teléfono</th>
-                        <th class="p-3">F. Envío</th>
-                        <th class="p-3">F. Est. Llegada</th>
-                        <th class="p-3">F. Prev. Instalación</th>
-                        <th class="p-3 text-center">Concluido</th>
-                        <th class="p-3 text-center rounded-tr-lg">Acciones</th>
+                    <tr class="bg-slate-800 text-white text-[11px] uppercase tracking-wider">
+                        <th class="p-2 rounded-tl-lg w-12 text-center" title="Nota">📝</th>
+                        <th class="p-2 w-20">Presup.</th>
+                        <th class="p-2 w-24">Modelo</th>
+                        <th class="p-2 w-24">País</th>
+                        <th class="p-2 w-32">Nombre</th>
+                        <th class="p-2 min-w-[230px]">Dirección de Entrega</th>
+                        <th class="p-2 w-24 text-center">Confirmado</th>
+                        <th class="p-2 w-28">Teléfono</th>
+                        <th class="p-2 w-28">F. Envío</th>
+                        <th class="p-2 w-28">F. Est. Llegada</th>
+                        <th class="p-2 w-32">F. Prev. Instalación</th>
+                        <th class="p-2 w-24 text-center col-concluido">Concluido</th>
+                        <th class="p-2 w-16 text-center rounded-tr-lg">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaCuerpo" class="divide-y divide-slate-200 text-sm">
@@ -457,12 +469,12 @@
             tbody.innerHTML = '';
             registrosCargados = [];
 
-            const btnViajes = document.getElementById('btnToggleViajes');
-            if (btnViajes) {
-                btnViajes.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
-                btnViajes.classList.add('bg-sky-600', 'hover:bg-sky-700');
-            }
+            // La página siempre arranca en el menú principal (sin Viajes ni Envíos)
+            modoViajesGlobal = false;
+            modoEnviosGlobal = false;
+            actualizarEstiloBotonesModo();
 
+            const items = [];
             data.forEach((item, index) => {
                 if (item.concluido && item.fecha_concluido) {
                     const fechaConcluido = new Date(item.fecha_concluido);
@@ -471,12 +483,15 @@
                         return;
                     }
                 }
-                
+
                 item.modo_viajes = false;
+                item.modo_envios = false;
                 item.color = obtenerColorAsignado(index);
-                registrosCargados.push(item);
-                renderizarFila(item);
+                items.push(item);
             });
+
+            registrosCargados = ordenarRegistros(items);
+            registrosCargados.forEach(item => renderizarFila(item));
         }
 
         async function crearNuevaLinea() {
@@ -513,8 +528,11 @@
             if (data && data.length > 0) {
                 const item = data[0];
                 item.color = obtenerColorAsignado(registrosCargados.length);
+                item.modo_viajes = false;
+                item.modo_envios = false;
                 registrosCargados.push(item);
                 renderizarFila(item);
+                reordenarTabla();
             }
         }
 
@@ -545,6 +563,11 @@
             }
 
             await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            // Reordenar la lista cuando el cambio afecta al orden (fecha o completado)
+            if (campo === 'fecha_instalacion' || campo === 'concluido') {
+                reordenarTabla();
+            }
         }
 
         async function eliminarFila(id, silencioso = false) {
@@ -559,59 +582,120 @@
         }
 
         // ==========================================
+        // 3b. ORDEN DE LA LISTA
+        // Activas con fecha (la más próxima a hoy arriba), luego las que aún
+        // no tienen fecha y, al final, las completadas.
+        // ==========================================
+
+        function diasHastaHoy(fechaStr) {
+            if (!fechaStr) return Infinity;
+            const partes = fechaStr.split('-');
+            if (partes.length !== 3) return Infinity;
+            const fecha = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+            const base = new Date();
+            base.setHours(0, 0, 0, 0);
+            return Math.abs(fecha.getTime() - base.getTime());
+        }
+
+        function ordenarRegistros(lista) {
+            const conFecha = [];
+            const sinFecha = [];
+            const completadas = [];
+
+            lista.forEach(item => {
+                if (item.concluido) completadas.push(item);
+                else if (item.fecha_instalacion) conFecha.push(item);
+                else sinFecha.push(item);
+            });
+
+            conFecha.sort((a, b) => diasHastaHoy(a.fecha_instalacion) - diasHastaHoy(b.fecha_instalacion));
+
+            return [...conFecha, ...sinFecha, ...completadas];
+        }
+
+        function reordenarTabla() {
+            const tbody = document.getElementById('tablaCuerpo');
+            if (!tbody) return;
+
+            registrosCargados = ordenarRegistros(registrosCargados);
+            registrosCargados.forEach(item => {
+                const tr = document.getElementById(`fila-${item.id}`);
+                if (tr) tbody.appendChild(tr);
+            });
+        }
+
+        // ==========================================
         // 4. RENDERIZADO EN TABLA Y VIAJES
         // ==========================================
 
-        function toggleModoViajesGeneral() {
-            modoViajesGlobal = !modoViajesGlobal;
-            const btn = document.getElementById('btnToggleViajes');
-            if (modoViajesGlobal) {
-                btn.classList.remove('bg-sky-600', 'hover:bg-sky-700');
-                btn.classList.add('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
-            } else {
-                btn.classList.remove('bg-sky-800', 'hover:bg-sky-900', 'ring-2', 'ring-sky-300');
-                btn.classList.add('bg-sky-600', 'hover:bg-sky-700');
+        function actualizarEstiloBotonesModo() {
+            const btnViajes = document.getElementById('btnToggleViajes');
+            if (btnViajes) {
+                btnViajes.classList.toggle('bg-sky-800', modoViajesGlobal);
+                btnViajes.classList.toggle('hover:bg-sky-900', modoViajesGlobal);
+                btnViajes.classList.toggle('ring-2', modoViajesGlobal);
+                btnViajes.classList.toggle('ring-sky-300', modoViajesGlobal);
+                btnViajes.classList.toggle('bg-sky-600', !modoViajesGlobal);
+                btnViajes.classList.toggle('hover:bg-sky-700', !modoViajesGlobal);
             }
 
+            const btnEnvios = document.getElementById('btnToggleEnvios');
+            if (btnEnvios) {
+                btnEnvios.classList.toggle('bg-orange-800', modoEnviosGlobal);
+                btnEnvios.classList.toggle('hover:bg-orange-900', modoEnviosGlobal);
+                btnEnvios.classList.toggle('ring-2', modoEnviosGlobal);
+                btnEnvios.classList.toggle('ring-orange-300', modoEnviosGlobal);
+                btnEnvios.classList.toggle('bg-orange-600', !modoEnviosGlobal);
+                btnEnvios.classList.toggle('hover:bg-orange-700', !modoEnviosGlobal);
+            }
+        }
+
+        // Activa un panel ('viajes' | 'envios' | 'normal') en todas las filas.
+        // Activar uno desactiva el otro; volver a pulsar el activo devuelve al menú principal.
+        function aplicarModoGlobal(modo) {
+            modoViajesGlobal = modo === 'viajes';
+            modoEnviosGlobal = modo === 'envios';
+
+            actualizarEstiloBotonesModo();
+
             registrosCargados.forEach(item => {
-                item.modo_viajes = modoViajesGlobal;
-                actualizarCampo(item.id, 'modo_viajes', modoViajesGlobal);
+                item.modo_viajes = modo === 'viajes';
+                item.modo_envios = modo === 'envios';
+                db.from('instalaciones')
+                    .update({ modo_viajes: item.modo_viajes, modo_envios: item.modo_envios })
+                    .eq('id', item.id);
                 rerenderFilaContent(item.id);
             });
+        }
+
+        function toggleModoViajesGeneral() {
+            aplicarModoGlobal(modoViajesGlobal ? 'normal' : 'viajes');
         }
 
         function toggleModoViajesIndividual(id) {
             const item = registrosCargados.find(r => r.id === id);
             if (item) {
                 item.modo_viajes = !item.modo_viajes;
-                actualizarCampo(id, 'modo_viajes', item.modo_viajes);
+                if (item.modo_viajes) item.modo_envios = false;
+                db.from('instalaciones')
+                    .update({ modo_viajes: item.modo_viajes, modo_envios: item.modo_envios })
+                    .eq('id', id);
                 rerenderFilaContent(id);
             }
         }
 
         function toggleModoEnviosGeneral() {
-            modoEnviosGlobal = !modoEnviosGlobal;
-            const btn = document.getElementById('btnToggleEnvios');
-            if (modoEnviosGlobal) {
-                btn.classList.remove('bg-orange-600', 'hover:bg-orange-700');
-                btn.classList.add('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
-            } else {
-                btn.classList.remove('bg-orange-800', 'hover:bg-orange-900', 'ring-2', 'ring-orange-300');
-                btn.classList.add('bg-orange-600', 'hover:bg-orange-700');
-            }
-
-            registrosCargados.forEach(item => {
-                item.modo_envios = modoEnviosGlobal;
-                actualizarCampo(item.id, 'modo_envios', modoEnviosGlobal);
-                rerenderFilaContent(item.id);
-            });
+            aplicarModoGlobal(modoEnviosGlobal ? 'normal' : 'envios');
         }
 
         function toggleModoEnviosIndividual(id) {
             const item = registrosCargados.find(r => r.id === id);
             if (item) {
                 item.modo_envios = !item.modo_envios;
-                actualizarCampo(id, 'modo_envios', item.modo_envios);
+                if (item.modo_envios) item.modo_viajes = false;
+                db.from('instalaciones')
+                    .update({ modo_envios: item.modo_envios, modo_viajes: item.modo_viajes })
+                    .eq('id', id);
                 rerenderFilaContent(id);
             }
         }
@@ -690,7 +774,7 @@
                 const fechaFormateada = formatearFecha(item.fecha_instalacion);
 
                 return `
-                    <td colspan="11" class="p-2">
+                    <td colspan="${esEditor ? 12 : 11}" class="p-2">
                         <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
                             <div class="flex items-center gap-1 shrink-0">
                                 <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
@@ -751,7 +835,7 @@
                 </td>
                 <td class="p-2">
                     <div class="flex items-center gap-1">
-                        <input type="text" dir="rtl" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion w-72 p-1 border border-slate-300 rounded text-xs text-left" placeholder="Dirección completa">
+                        <input type="text" dir="rtl" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion flex-1 min-w-0 p-1 border border-slate-300 rounded text-xs text-left" placeholder="Dirección completa">
                         <a id="map-link-${item.id}" href="${mapLink}" target="_blank" class="text-slate-600 hover:text-indigo-600 p-1" title="Ver en Google Maps">🗺️</a>
                     </div>
                 </td>
@@ -797,7 +881,7 @@
             const telefono = (item.envio_telefono || '').trim();
 
             return `
-                <td colspan="11" class="p-2">
+                <td colspan="${esEditor ? 12 : 11}" class="p-2">
                     <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
                         <div class="flex items-center gap-1 shrink-0">
                             <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
@@ -917,9 +1001,11 @@
                     const colorComplementario = obtenerColorComplementario(item.color);
                     btn.style.textShadow = `0 0 8px ${colorComplementario}, 0 0 16px ${colorComplementario}`;
                     btn.classList.add('nota-activa');
+                    btn.style.opacity = '';
                 } else {
                     btn.style.textShadow = '';
                     btn.classList.remove('nota-activa');
+                    btn.style.opacity = '0.8';
                 }
             });
         }
