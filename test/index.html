@@ -334,7 +334,8 @@
             "Reino Unido": { dias: 5, orden: 10 },
             "Suiza": { dias: 5, orden: 11 },
             "Austria": { dias: 5, orden: 12 },
-            "Polonia": { dias: 8, orden: 13 }
+            "Polonia": { dias: 8, orden: 13 },
+            "Otro": { dias: 8, orden: 14 }
         };
 
         const cacheWidgets = {};
@@ -449,6 +450,99 @@
             return null;
         }
 
+        function normalizarNombrePais(paisRaw) {
+            if (!paisRaw) return null;
+            const p = paisRaw.trim();
+            const mapa = {
+                'spain': 'España', 'españa': 'España', 'espagne': 'España', 'spanien': 'España',
+                'italy': 'Italia', 'italia': 'Italia', 'italie': 'Italia', 'italien': 'Italia',
+                'france': 'Francia', 'francia': 'Francia', 'frankreich': 'Francia',
+                'portugal': 'Portugal',
+                'morocco': 'Marruecos', 'marruecos': 'Marruecos', 'maroc': 'Marruecos', 'marokko': 'Marruecos',
+                'tunisia': 'Túnez', 'túnez': 'Túnez', 'tunisie': 'Túnez', 'tunesien': 'Túnez',
+                'germany': 'Alemania', 'alemania': 'Alemania', 'deutschland': 'Alemania', 'allemagne': 'Alemania',
+                'belgium': 'Bélgica', 'bélgica': 'Bélgica', 'belgique': 'Bélgica', 'belgien': 'Bélgica',
+                'netherlands': 'Holanda', 'holanda': 'Holanda', 'nederland': 'Holanda', 'pays-bas': 'Holanda', 'niederlande': 'Holanda',
+                'united kingdom': 'Reino Unido', 'reino unido': 'Reino Unido', 'uk': 'Reino Unido', 'great britain': 'Reino Unido', 'royaume-uni': 'Reino Unido', 'vereinigtes königreich': 'Reino Unido',
+                'switzerland': 'Suiza', 'suiza': 'Suiza', 'suisse': 'Suiza', 'schweiz': 'Suiza',
+                'austria': 'Austria', 'österreich': 'Austria',
+                'poland': 'Polonia', 'polonia': 'Polonia', 'pologne': 'Polonia', 'polen': 'Polonia',
+                'luxembourg': 'Luxemburgo', 'luxemburgo': 'Luxemburgo', 'luxemburg': 'Luxemburgo',
+                'ireland': 'Irlanda', 'irlanda': 'Irlanda',
+                'sweden': 'Suecia', 'suecia': 'Suecia',
+                'norway': 'Noruega', 'noruega': 'Noruega',
+                'denmark': 'Dinamarca', 'dinamarca': 'Dinamarca',
+                'finland': 'Finlandia', 'finlandia': 'Finlandia',
+                'greece': 'Grecia', 'grecia': 'Grecia',
+                'croatia': 'Croacia', 'croacia': 'Croacia',
+                'slovenia': 'Eslovenia', 'eslovenia': 'Eslovenia',
+                'czechia': 'Chequia', 'chequia': 'Chequia', 'czech republic': 'Chequia',
+                'slovakia': 'Eslovaquia', 'eslovaquia': 'Eslovaquia',
+                'hungary': 'Hungría', 'hungría': 'Hungría',
+                'romania': 'Rumanía', 'rumanía': 'Rumanía',
+                'bulgaria': 'Bulgaria'
+            };
+            const clave = p.toLowerCase();
+            if (mapa[clave]) return mapa[clave];
+            for (const k in mapa) {
+                if (clave.includes(k) || k.includes(clave)) return mapa[k];
+            }
+            return p;
+        }
+
+        function extraerPaisDesdeGeo(geoData) {
+            if (!geoData) return null;
+            let paisDetectado = null;
+            if (geoData.address && geoData.address.country) {
+                paisDetectado = geoData.address.country;
+            } else {
+                const dn = geoData.displayName || '';
+                const partes = dn.split(',');
+                if (partes.length >= 1) {
+                    paisDetectado = partes[partes.length - 1].trim();
+                }
+            }
+            if (!paisDetectado) return null;
+            const normalizado = normalizarNombrePais(paisDetectado);
+            if (normalizado && Object.prototype.hasOwnProperty.call(PAISES_CONFIG, normalizado)) {
+                return normalizado;
+            }
+            return normalizado || null;
+        }
+
+        async function detectarPaisParaFila(id, forzar = false) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+            if (item.pais !== 'Otro' && !forzar) return;
+            const dir = (item.direccion || '').trim();
+            if (!dir) {
+                item.pais_detectado = null;
+                rerenderFilaContent(id);
+                return;
+            }
+            try {
+                const geo = await geolocalizarConFallback(dir);
+                const paisDet = extraerPaisDesdeGeo(geo);
+                item.pais_detectado = paisDet || null;
+                const rowElem = document.getElementById(`fila-${id}`);
+                if (rowElem) {
+                    const envioVal = rowElem.querySelector('.inp-envio')?.value || item.fecha_envio || '';
+                    const diasCalc = (item.pais === 'Otro') ? 8 : (PAISES_CONFIG[item.pais] ? PAISES_CONFIG[item.pais].dias : 3);
+                    const nuevaEstimada = calcularFechaEstimada(envioVal, diasCalc);
+                    if (nuevaEstimada !== item.fecha_estimada) {
+                        item.fecha_estimada = nuevaEstimada;
+                        const inpEstimada = rowElem.querySelector('.inp-estimada');
+                        if (inpEstimada) inpEstimada.value = nuevaEstimada;
+                        await db.from('instalaciones').update({ fecha_estimada: nuevaEstimada }).eq('id', id);
+                    }
+                }
+                rerenderFilaContent(id);
+            } catch (e) {
+                console.error('Error detectando país:', e);
+                rerenderFilaContent(id);
+            }
+        }
+
         // ==========================================
         // 3. OPERACIONES SUPABASE
         // ==========================================
@@ -488,6 +582,7 @@
 
                 item.modo_viajes = false;
                 item.modo_envios = false;
+                item.pais_detectado = item.pais_detectado || null;
                 item.color = obtenerColorAsignado(index);
                 items.push(item);
             });
@@ -510,6 +605,7 @@
                 fecha_instalacion: null,
                 concluido: false,
                 modo_viajes: false,
+                pais_detectado: null,
                 vuelo_ida_chk: false, vuelo_ida_nombre: '', vuelo_ida_link: '', vuelo_ida_local: '',
                 coche_chk: false, coche_nombre: '', coche_link: '',
                 hotel_chk: false, hotel_nombre: '', hotel_link: '', hotel_direccion: '',
@@ -532,6 +628,7 @@
                 item.color = obtenerColorAsignado(registrosCargados.length);
                 item.modo_viajes = false;
                 item.modo_envios = false;
+                item.pais_detectado = item.pais_detectado || null;
                 registrosCargados.push(item);
                 renderizarFila(item);
                 reordenarTabla();
@@ -550,7 +647,12 @@
                     const paisVal = campo === 'pais' ? valor : (rowElem.querySelector('.sel-pais')?.value || 'España');
                     const envioVal = campo === 'fecha_envio' ? valor : (rowElem.querySelector('.inp-envio')?.value || '');
                     
-                    const dias = PAISES_CONFIG[paisVal] ? PAISES_CONFIG[paisVal].dias : 3;
+                    let dias = 3;
+                    if (paisVal === 'Otro') {
+                        dias = 8;
+                    } else if (PAISES_CONFIG[paisVal]) {
+                        dias = PAISES_CONFIG[paisVal].dias;
+                    }
                     const nuevaEstimada = calcularFechaEstimada(envioVal, dias);
                     
                     updateObj['fecha_estimada'] = nuevaEstimada || null;
@@ -565,6 +667,13 @@
             }
 
             await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            if (campo === 'pais' && valor === 'Otro') {
+                detectarPaisParaFila(id);
+            }
+            if (campo === 'direccion' && item && item.pais === 'Otro') {
+                detectarPaisParaFila(id);
+            }
 
             // Reordenar la lista cuando el cambio afecta al orden (fecha o completado)
             if (campo === 'fecha_instalacion' || campo === 'concluido') {
@@ -800,9 +909,20 @@
                     </select>
                 </td>
                 <td class="p-2">
-                    <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
-                        ${opcionesPaises}
-                    </select>
+                    ${item.pais === 'Otro' ? `
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-semibold text-slate-800 truncate max-w-[9ch]" title="${item.pais_detectado || 'Otro'}">
+                                ${item.pais_detectado || '<span class="text-slate-400 italic">Otro</span>'}
+                            </span>
+                            <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                                ${opcionesPaises}
+                            </select>
+                        </div>
+                    ` : `
+                        <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                            ${opcionesPaises}
+                        </select>
+                    `}
                 </td>
                 <td class="p-2">
                     <input type="text" value="${item.nombre || ''}" onchange="actualizarCampo('${item.id}', 'nombre', this.value)" class="w-full p-1 border border-slate-300 rounded text-xs" placeholder="Nombre cliente">
@@ -1003,6 +1123,9 @@
 
             if (item.modo_viajes) {
                 cargarWidgetsDestino(item);
+            }
+            if (item.pais === 'Otro' && item.pais_detectado === null && (item.direccion || '').trim()) {
+                detectarPaisParaFila(item.id);
             }
         }
 
