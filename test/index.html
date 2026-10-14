@@ -969,7 +969,7 @@
 
             return `
                 <td colspan="${esEditor ? 12 : 11}" class="p-2">
-                    <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                    <div class="flex items-center gap-2 overflow-x-auto py-1">
                         <div class="flex items-center gap-1 shrink-0">
                             <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
                             <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-orange-500 hover:text-orange-600 transition" title="Ver en Google Maps">
@@ -978,20 +978,20 @@
                             </a>
                         </div>
 
-                        <div class="flex items-center gap-3 shrink-0">
-                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                        <div class="flex items-center gap-2 shrink-0">
+                            <div class="flex items-center gap-1 bg-white/70 px-2 py-1 rounded border border-slate-200">
                                 <span class="text-xs text-slate-500">PME:</span>
-                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${pmeTrack || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[110px]">${pmeTrack || '<span class="text-slate-400">Sin datos</span>'}</span>
                                 <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
                             </div>
-                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                            <div class="flex items-center gap-1 bg-white/70 px-2 py-1 rounded border border-slate-200">
                                 <span class="text-xs text-slate-500">Local:</span>
-                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${local || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[110px]">${local || '<span class="text-slate-400">Sin datos</span>'}</span>
                                 <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
                             </div>
-                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                            <div class="flex items-center gap-1 bg-white/70 px-2 py-1 rounded border border-slate-200">
                                 <span class="text-xs text-slate-500">Tel:</span>
-                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[100px]">${telefono || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[90px]">${telefono || '<span class="text-slate-400">Sin datos</span>'}</span>
                                 <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
                             </div>
                         </div>
@@ -1089,7 +1089,7 @@
                 } else {
                     btn.style.textShadow = '';
                     btn.classList.remove('nota-activa');
-                    btn.style.opacity = '0.8';
+                    btn.style.opacity = '0.5';
                 }
             });
         }
