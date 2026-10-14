@@ -26,7 +26,6 @@
     /* Ocultar elementos para el público general (cuando NO existe la clase .es-editor en <body>) */
     body:not(.es-editor) #btnToggleViajes,
     body:not(.es-editor) .btn-eliminar-fila,
-    body:not(.es-editor) .btn-viaje-individual,
     body:not(.es-editor) .col-concluido {
         display: none !important;
     }
@@ -49,6 +48,9 @@
 
     /* Reparto de anchos de la tabla para que las columnas no queden ni enormes ni diminutas */
     table .inp-direccion { min-width: 0; }
+
+    /* País: ancho mínimo garantizado. 6ch de texto + padding + flecha del desplegable */
+    table .sel-pais { min-width: calc(6ch + 2.5rem); }
 </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-2 sm:p-4 md:p-8 text-slate-800">
@@ -93,15 +95,15 @@
                         <th class="p-2 rounded-tl-lg w-12 text-center" title="Nota">📝</th>
                         <th class="p-2 w-20">Presup.</th>
                         <th class="p-2 w-24">Modelo</th>
-                        <th class="p-2 w-24">País</th>
+                        <th class="p-2 w-24 min-w-24">País</th>
                         <th class="p-2 w-32">Nombre</th>
                         <th class="p-2 min-w-[230px]">Dirección de Entrega</th>
-                        <th class="p-2 w-24 text-center">Confirmado</th>
+                        <th class="p-2 w-12 text-center">OK</th>
                         <th class="p-2 w-28">Teléfono</th>
                         <th class="p-2 w-28">F. Envío</th>
                         <th class="p-2 w-28">F. Est. Llegada</th>
                         <th class="p-2 w-32">F. Prev. Instalación</th>
-                        <th class="p-2 w-24 text-center col-concluido">Concluido</th>
+                        <th class="p-2 w-24 text-center col-concluido">FIN</th>
                         <th class="p-2 w-16 text-center rounded-tr-lg">Acciones</th>
                     </tr>
                 </thead>
@@ -332,7 +334,8 @@
             "Reino Unido": { dias: 5, orden: 10 },
             "Suiza": { dias: 5, orden: 11 },
             "Austria": { dias: 5, orden: 12 },
-            "Polonia": { dias: 8, orden: 13 }
+            "Polonia": { dias: 8, orden: 13 },
+            "Otro": { dias: 8, orden: 14 }
         };
 
         const cacheWidgets = {};
@@ -447,6 +450,99 @@
             return null;
         }
 
+        function normalizarNombrePais(paisRaw) {
+            if (!paisRaw) return null;
+            const p = paisRaw.trim();
+            const mapa = {
+                'spain': 'España', 'españa': 'España', 'espagne': 'España', 'spanien': 'España',
+                'italy': 'Italia', 'italia': 'Italia', 'italie': 'Italia', 'italien': 'Italia',
+                'france': 'Francia', 'francia': 'Francia', 'frankreich': 'Francia',
+                'portugal': 'Portugal',
+                'morocco': 'Marruecos', 'marruecos': 'Marruecos', 'maroc': 'Marruecos', 'marokko': 'Marruecos',
+                'tunisia': 'Túnez', 'túnez': 'Túnez', 'tunisie': 'Túnez', 'tunesien': 'Túnez',
+                'germany': 'Alemania', 'alemania': 'Alemania', 'deutschland': 'Alemania', 'allemagne': 'Alemania',
+                'belgium': 'Bélgica', 'bélgica': 'Bélgica', 'belgique': 'Bélgica', 'belgien': 'Bélgica',
+                'netherlands': 'Holanda', 'holanda': 'Holanda', 'nederland': 'Holanda', 'pays-bas': 'Holanda', 'niederlande': 'Holanda',
+                'united kingdom': 'Reino Unido', 'reino unido': 'Reino Unido', 'uk': 'Reino Unido', 'great britain': 'Reino Unido', 'royaume-uni': 'Reino Unido', 'vereinigtes königreich': 'Reino Unido',
+                'switzerland': 'Suiza', 'suiza': 'Suiza', 'suisse': 'Suiza', 'schweiz': 'Suiza',
+                'austria': 'Austria', 'österreich': 'Austria',
+                'poland': 'Polonia', 'polonia': 'Polonia', 'pologne': 'Polonia', 'polen': 'Polonia',
+                'luxembourg': 'Luxemburgo', 'luxemburgo': 'Luxemburgo', 'luxemburg': 'Luxemburgo',
+                'ireland': 'Irlanda', 'irlanda': 'Irlanda',
+                'sweden': 'Suecia', 'suecia': 'Suecia',
+                'norway': 'Noruega', 'noruega': 'Noruega',
+                'denmark': 'Dinamarca', 'dinamarca': 'Dinamarca',
+                'finland': 'Finlandia', 'finlandia': 'Finlandia',
+                'greece': 'Grecia', 'grecia': 'Grecia',
+                'croatia': 'Croacia', 'croacia': 'Croacia',
+                'slovenia': 'Eslovenia', 'eslovenia': 'Eslovenia',
+                'czechia': 'Chequia', 'chequia': 'Chequia', 'czech republic': 'Chequia',
+                'slovakia': 'Eslovaquia', 'eslovaquia': 'Eslovaquia',
+                'hungary': 'Hungría', 'hungría': 'Hungría',
+                'romania': 'Rumanía', 'rumanía': 'Rumanía',
+                'bulgaria': 'Bulgaria'
+            };
+            const clave = p.toLowerCase();
+            if (mapa[clave]) return mapa[clave];
+            for (const k in mapa) {
+                if (clave.includes(k) || k.includes(clave)) return mapa[k];
+            }
+            return p;
+        }
+
+        function extraerPaisDesdeGeo(geoData) {
+            if (!geoData) return null;
+            let paisDetectado = null;
+            if (geoData.address && geoData.address.country) {
+                paisDetectado = geoData.address.country;
+            } else {
+                const dn = geoData.displayName || '';
+                const partes = dn.split(',');
+                if (partes.length >= 1) {
+                    paisDetectado = partes[partes.length - 1].trim();
+                }
+            }
+            if (!paisDetectado) return null;
+            const normalizado = normalizarNombrePais(paisDetectado);
+            if (normalizado && Object.prototype.hasOwnProperty.call(PAISES_CONFIG, normalizado)) {
+                return normalizado;
+            }
+            return normalizado || null;
+        }
+
+        async function detectarPaisParaFila(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+            if (item.pais !== 'Otro') return;
+            const dir = (item.direccion || '').trim();
+            if (!dir) {
+                item.pais_detectado = null;
+                // Si no hay dirección y está en "Otro", dejar el select en "Otro" tal cual
+                rerenderFilaContent(id);
+                return;
+            }
+            try {
+                const geo = await geolocalizarConFallback(dir);
+                item.pais_detectado = extraerPaisDesdeGeo(geo) || null;
+                // "Otro" estima siempre 8 días laborables desde la fecha de envío
+                const rowElem = document.getElementById(`fila-${id}`);
+                if (rowElem) {
+                    const envioVal = rowElem.querySelector('.inp-envio')?.value || item.fecha_envio || '';
+                    const nuevaEstimada = calcularFechaEstimada(envioVal, 8);
+                    if (nuevaEstimada !== item.fecha_estimada) {
+                        item.fecha_estimada = nuevaEstimada;
+                        const inpEstimada = rowElem.querySelector('.inp-estimada');
+                        if (inpEstimada) inpEstimada.value = nuevaEstimada;
+                        await db.from('instalaciones').update({ fecha_estimada: nuevaEstimada }).eq('id', id);
+                    }
+                }
+                rerenderFilaContent(id);
+            } catch (e) {
+                console.error('Error detectando país:', e);
+                rerenderFilaContent(id);
+            }
+        }
+
         // ==========================================
         // 3. OPERACIONES SUPABASE
         // ==========================================
@@ -486,6 +582,7 @@
 
                 item.modo_viajes = false;
                 item.modo_envios = false;
+                item.pais_detectado = item.pais_detectado || null;
                 item.color = obtenerColorAsignado(index);
                 items.push(item);
             });
@@ -530,6 +627,7 @@
                 item.color = obtenerColorAsignado(registrosCargados.length);
                 item.modo_viajes = false;
                 item.modo_envios = false;
+                item.pais_detectado = item.pais_detectado || null;
                 registrosCargados.push(item);
                 renderizarFila(item);
                 reordenarTabla();
@@ -548,7 +646,12 @@
                     const paisVal = campo === 'pais' ? valor : (rowElem.querySelector('.sel-pais')?.value || 'España');
                     const envioVal = campo === 'fecha_envio' ? valor : (rowElem.querySelector('.inp-envio')?.value || '');
                     
-                    const dias = PAISES_CONFIG[paisVal] ? PAISES_CONFIG[paisVal].dias : 3;
+                    let dias = 3;
+                    if (paisVal === 'Otro') {
+                        dias = 8;
+                    } else if (PAISES_CONFIG[paisVal]) {
+                        dias = PAISES_CONFIG[paisVal].dias;
+                    }
                     const nuevaEstimada = calcularFechaEstimada(envioVal, dias);
                     
                     updateObj['fecha_estimada'] = nuevaEstimada || null;
@@ -563,6 +666,19 @@
             }
 
             await db.from('instalaciones').update(updateObj).eq('id', id);
+
+            if (campo === 'pais' && valor === 'Otro') {
+                detectarPaisParaFila(id);
+            }
+            if (campo === 'direccion' && item) {
+                if (item.pais === 'Otro') {
+                    detectarPaisParaFila(id);
+                } else {
+                    // Si la dirección cambia y está en "Otro", también intentamos detectar
+                    // pero el país ya no es "Otro"; si el usuario quiere forzar, selecciona "Otro"
+                    detectarPaisParaFila(id);
+                }
+            }
 
             // Reordenar la lista cuando el cambio afecta al orden (fecha o completado)
             if (campo === 'fecha_instalacion' || campo === 'concluido') {
@@ -672,32 +788,8 @@
             aplicarModoGlobal(modoViajesGlobal ? 'normal' : 'viajes');
         }
 
-        function toggleModoViajesIndividual(id) {
-            const item = registrosCargados.find(r => r.id === id);
-            if (item) {
-                item.modo_viajes = !item.modo_viajes;
-                if (item.modo_viajes) item.modo_envios = false;
-                db.from('instalaciones')
-                    .update({ modo_viajes: item.modo_viajes, modo_envios: item.modo_envios })
-                    .eq('id', id);
-                rerenderFilaContent(id);
-            }
-        }
-
         function toggleModoEnviosGeneral() {
             aplicarModoGlobal(modoEnviosGlobal ? 'normal' : 'envios');
-        }
-
-        function toggleModoEnviosIndividual(id) {
-            const item = registrosCargados.find(r => r.id === id);
-            if (item) {
-                item.modo_envios = !item.modo_envios;
-                if (item.modo_envios) item.modo_viajes = false;
-                db.from('instalaciones')
-                    .update({ modo_envios: item.modo_envios, modo_viajes: item.modo_viajes })
-                    .eq('id', id);
-                rerenderFilaContent(id);
-            }
         }
 
         function rerenderFilaContent(id) {
@@ -794,10 +886,6 @@
                             <div id="widget-info-${item.id}" class="flex items-center gap-2 text-xs bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
                                 <span class="text-slate-400 italic">Cargando datos...</span>
                             </div>
-
-                            <button onclick="toggleModoViajesIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
-                                ↩ Datos Predeterminados
-                            </button>
                         </div>
                     </td>
                     <td class="p-2 text-center shrink-0">
@@ -806,9 +894,11 @@
                 `;
             }
 
-            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => 
-                `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`
-            ).join('');
+            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => {
+                // En "Otro" mostramos dentro de la casilla el país detectado (sin cambiar el valor real)
+                const etiquetaPais = (p === 'Otro' && item.pais_detectado) ? item.pais_detectado : p;
+                return `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${etiquetaPais}</option>`;
+            }).join('');
 
             const attrFechaInstalacion = esEditor ? '' : 'readonly tabindex="-1"';
 
@@ -835,7 +925,7 @@
                 </td>
                 <td class="p-2">
                     <div class="flex items-center gap-1">
-                        <input type="text" dir="rtl" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion flex-1 min-w-0 p-1 border border-slate-300 rounded text-xs text-left" placeholder="Dirección completa">
+                        <input type="text" dir="ltr" value="${item.direccion || ''}" onchange="actualizarCampo('${item.id}', 'direccion', this.value); actualizarLinks('${item.id}')" class="inp-direccion flex-1 min-w-0 p-1 border border-slate-300 rounded text-xs text-left" placeholder="Dirección completa">
                         <a id="map-link-${item.id}" href="${mapLink}" target="_blank" class="text-slate-600 hover:text-indigo-600 p-1" title="Ver en Google Maps">🗺️</a>
                     </div>
                 </td>
@@ -859,10 +949,7 @@
                     <input type="date" value="${item.fecha_estimada || ''}" class="inp-estimada w-full p-1 border border-slate-300 rounded text-xs bg-slate-100" readonly>
                 </td>
                 <td class="p-2">
-                    <div class="flex items-center gap-1">
-                        <input type="date" value="${item.fecha_instalacion || ''}" ${attrFechaInstalacion} onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)" class="inp-fecha-instalacion w-full p-1 border border-slate-300 rounded text-xs">
-                        <button onclick="toggleModoViajesIndividual('${item.id}')" class="btn-viaje-individual bg-sky-600 hover:bg-sky-700 text-white text-xs px-1.5 py-1 rounded shadow" title="Configurar Viaje">✈️</button>
-                    </div>
+                    <input type="date" value="${item.fecha_instalacion || ''}" ${attrFechaInstalacion} onchange="actualizarCampo('${item.id}', 'fecha_instalacion', this.value)" class="inp-fecha-instalacion w-full p-1 border border-slate-300 rounded text-xs">
                 </td>
                 <td class="p-2 text-center col-concluido">
                     <input type="checkbox" ${item.concluido ? 'checked' : ''} onchange="toggleConcluido('${item.id}', this.checked)" class="w-4 h-4 accent-emerald-600 rounded cursor-pointer">
@@ -882,7 +969,7 @@
 
             return `
                 <td colspan="${esEditor ? 12 : 11}" class="p-2">
-                    <div class="flex items-center justify-between gap-3 overflow-x-auto py-1">
+                    <div class="flex items-center gap-2 overflow-x-auto py-1">
                         <div class="flex items-center gap-1 shrink-0">
                             <button onclick="abrirModalNota('${item.id}')" class="btn-nota text-slate-400 hover:text-slate-700 font-bold p-0.5 hover:bg-slate-100 rounded transition" title="Añadir/Editar nota">📝</button>
                             <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.direccion)}" target="_blank" class="flex items-center gap-2 font-bold text-slate-800 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm hover:border-orange-500 hover:text-orange-600 transition" title="Ver en Google Maps">
@@ -891,27 +978,24 @@
                             </a>
                         </div>
 
-                        <div class="flex items-center gap-3 shrink-0">
-                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                        <div class="flex items-center gap-2 shrink-0">
+                            <div class="flex items-center gap-1 bg-white/70 px-2 py-1 rounded border border-slate-200">
                                 <span class="text-xs text-slate-500">PME:</span>
-                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${pmeTrack || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[110px]">${pmeTrack || '<span class="text-slate-400">Sin datos</span>'}</span>
                                 <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
                             </div>
-                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                            <div class="flex items-center gap-1 bg-white/70 px-2 py-1 rounded border border-slate-200">
                                 <span class="text-xs text-slate-500">Local:</span>
-                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[120px]">${local || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[110px]">${local || '<span class="text-slate-400">Sin datos</span>'}</span>
                                 <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
                             </div>
-                            <div class="flex items-center gap-1.5 bg-white/70 px-2 py-1 rounded border border-slate-200">
+                            <div class="flex items-center gap-1 bg-white/70 px-2 py-1 rounded border border-slate-200">
                                 <span class="text-xs text-slate-500">Tel:</span>
-                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[100px]">${telefono || '<span class="text-slate-400">Sin datos</span>'}</span>
+                                <span class="text-xs font-semibold text-slate-700 truncate max-w-[90px]">${telefono || '<span class="text-slate-400">Sin datos</span>'}</span>
                                 <button onclick="abrirModalEnvio('${item.id}')" class="text-slate-400 hover:text-slate-700 text-xs shrink-0 p-0.5" title="Editar Envío">✏️</button>
                             </div>
                         </div>
 
-                        <button onclick="toggleModoEnviosIndividual('${item.id}')" class="bg-slate-700 hover:bg-slate-900 text-white text-xs px-2 py-1 rounded shadow transition shrink-0 ml-auto">
-                            ↩ Datos Predeterminados
-                        </button>
                     </div>
                 </td>
                 <td class="p-2 text-center shrink-0">
@@ -1035,6 +1119,9 @@
 
             if (item.modo_viajes) {
                 cargarWidgetsDestino(item);
+            }
+            if (item.pais === 'Otro' && item.pais_detectado === null && (item.direccion || '').trim()) {
+                detectarPaisParaFila(item.id);
             }
         }
 
