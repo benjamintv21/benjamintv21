@@ -510,10 +510,10 @@
             return normalizado || null;
         }
 
-        async function detectarPaisParaFila(id, forzar = false) {
+        async function detectarPaisParaFila(id) {
             const item = registrosCargados.find(r => r.id === id);
             if (!item) return;
-            if (item.pais !== 'Otro' && !forzar) return;
+            if (item.pais !== 'Otro') return;
             const dir = (item.direccion || '').trim();
             if (!dir) {
                 item.pais_detectado = null;
@@ -523,33 +523,12 @@
             }
             try {
                 const geo = await geolocalizarConFallback(dir);
-                const paisDet = extraerPaisDesdeGeo(geo);
-                item.pais_detectado = paisDet || null;
-                if (paisDet && Object.prototype.hasOwnProperty.call(PAISES_CONFIG, paisDet)) {
-                    item.pais = paisDet;
-                    const updateObj = { pais: paisDet };
-                    const rowElem = document.getElementById(`fila-${id}`);
-                    if (rowElem) {
-                        const envioVal = rowElem.querySelector('.inp-envio')?.value || item.fecha_envio || '';
-                        let diasCalc = PAISES_CONFIG[paisDet] ? PAISES_CONFIG[paisDet].dias : 3;
-                        if (paisDet === 'Otro') diasCalc = 8;
-                        const nuevaEstimada = calcularFechaEstimada(envioVal, diasCalc);
-                        if (nuevaEstimada !== item.fecha_estimada) {
-                            item.fecha_estimada = nuevaEstimada;
-                            updateObj.fecha_estimada = nuevaEstimada || null;
-                            const inpEstimada = rowElem.querySelector('.inp-estimada');
-                            if (inpEstimada) inpEstimada.value = nuevaEstimada;
-                        }
-                    }
-                    await db.from('instalaciones').update(updateObj).eq('id', id);
-                    rerenderFilaContent(id);
-                    return;
-                }
+                item.pais_detectado = extraerPaisDesdeGeo(geo) || null;
+                // "Otro" estima siempre 8 días laborables desde la fecha de envío
                 const rowElem = document.getElementById(`fila-${id}`);
                 if (rowElem) {
                     const envioVal = rowElem.querySelector('.inp-envio')?.value || item.fecha_envio || '';
-                    const diasCalc = 8;
-                    const nuevaEstimada = calcularFechaEstimada(envioVal, diasCalc);
+                    const nuevaEstimada = calcularFechaEstimada(envioVal, 8);
                     if (nuevaEstimada !== item.fecha_estimada) {
                         item.fecha_estimada = nuevaEstimada;
                         const inpEstimada = rowElem.querySelector('.inp-estimada');
@@ -626,7 +605,6 @@
                 fecha_instalacion: null,
                 concluido: false,
                 modo_viajes: false,
-                pais_detectado: null,
                 vuelo_ida_chk: false, vuelo_ida_nombre: '', vuelo_ida_link: '', vuelo_ida_local: '',
                 coche_chk: false, coche_nombre: '', coche_link: '',
                 hotel_chk: false, hotel_nombre: '', hotel_link: '', hotel_direccion: '',
@@ -916,9 +894,11 @@
                 `;
             }
 
-            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => 
-                `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${p}</option>`
-            ).join('');
+            let opcionesPaises = Object.keys(PAISES_CONFIG).map(p => {
+                // En "Otro" mostramos dentro de la casilla el país detectado (sin cambiar el valor real)
+                const etiquetaPais = (p === 'Otro' && item.pais_detectado) ? item.pais_detectado : p;
+                return `<option value="${p}" ${item.pais === p ? 'selected' : ''}>${etiquetaPais}</option>`;
+            }).join('');
 
             const attrFechaInstalacion = esEditor ? '' : 'readonly tabindex="-1"';
 
@@ -936,7 +916,7 @@
                     </select>
                 </td>
                 <td class="p-2">
-                    <select onchange="actualizarCampo('${item.id}', 'pais', this.value); actualizarLinks('${item.id}')" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
+                    <select onchange="actualizarCampo('${item.id}', 'pais', this.value)" class="sel-pais w-full p-1 border border-slate-300 rounded text-xs font-semibold">
                         ${opcionesPaises}
                     </select>
                 </td>
