@@ -192,6 +192,23 @@
                     </div>
                 </div>
 
+                <!-- CASILLA 5: CONFORMIDAD -->
+                <div onclick="openConformidadModal()" class="group relative bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-xl border border-slate-200/80 hover:border-amber-500 transition-all duration-300 cursor-pointer flex flex-col justify-between hover:-translate-y-1">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all duration-300 shadow-inner">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2 group-hover:text-amber-600 transition-colors">Conformidad</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed mb-4">
+                            Lista de verificación de funcionalidad y componentes del equipo, en varios idiomas.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-slate-100 flex items-center text-sm font-semibold text-amber-600 group-hover:text-amber-700">
+                        <span>Ver Conformidad</span>
+                        <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -313,6 +330,65 @@
                         <button onclick="copyPhoneNumber(this)" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold shadow-lg shadow-green-500/25 transition-all text-center flex items-center justify-center gap-2.5 order-1 sm:order-2">
                             <i class="fa-regular fa-copy text-lg"></i>
                             <span>Copiar número</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA CONFORMIDAD -->
+        <div id="conformidad-view" class="hidden fade-in max-w-3xl mx-auto w-full">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-amber-700 to-amber-600 px-6 sm:px-8 py-6 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="fa-solid fa-clipboard-check text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-bold">Conformidad</h2>
+                            <p class="text-amber-100 text-xs sm:text-sm">Lista de verificación de funcionalidad y componentes</p>
+                        </div>
+                    </div>
+                    <button onclick="closeConformidadModal()" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-9 h-9 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 sm:p-10 space-y-6 bg-slate-50/50">
+
+                    <!-- Selector de idioma -->
+                    <div class="flex justify-end">
+                        <div class="relative">
+                            <select id="lang-conformidad" onchange="updateConformidadText()" class="appearance-none bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 cursor-pointer outline-none">
+                                <option value="en" selected>🇬🇧 English</option>
+                                <option value="it">🇮🇹 Italiano</option>
+                                <option value="pt">🇵🇹 Português</option>
+                                <option value="fr">🇫🇷 Français</option>
+                                <option value="pl">🇵🇱 Polski</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                <i class="fa-solid fa-chevron-down text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de conformidad -->
+                    <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+                        <table id="conformidad-table" class="w-full border-collapse text-sm min-w-[540px]">
+                            <!-- Se llena con JS según el idioma -->
+                        </table>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-4">
+                        <button onclick="closeConformidadModal()" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold transition-all text-center flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-arrow-left text-sm"></i>
+                            <span>Atrás</span>
+                        </button>
+                        <button onclick="copyConformidadText(this)" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold shadow-lg shadow-amber-500/25 transition-all text-center flex items-center justify-center gap-2.5">
+                            <i class="fa-regular fa-copy text-lg"></i>
+                            <span>Copiar Conformidad</span>
                         </button>
                     </div>
 
@@ -525,6 +601,134 @@ Provincia: Madrid`;
             copyToClipboard('+34 618 24 18 34', btn, origHtml);
         }
 
+        const textConformidad = {
+            en: {
+                titulo: 'Description of functionality and component',
+                items: [
+                    'Visual inspection, check for defects, scratches, and loose parts.',
+                    'Check components and parts.',
+                    'Check serial number, labels, and standardized symbols.',
+                    'Verify powering on of the vacuum - EMS equipment.',
+                    'Establish Bluetooth connectivity for vacuum and EMS boards.',
+                    'Validation of correct EMS operation.',
+                    'Validate correct operation of the vacuum system.',
+                    'Validate correct operation of the Infrared system.',
+                    'Validate operation of Aromatherapy.',
+                    'Validate correct operation of the Tablet.',
+                    'Validate correct operation of (treadmill – exercise bike).',
+                    'Verify correct operation of LED and USB-C connector.',
+                    'Verify electrical installation at the facility (Earth, neutral, phase).'
+                ]
+            },
+            it: {
+                titulo: 'Descrizione della funzionalità e del componente',
+                items: [
+                    'Ispezione visiva, verificare la presenza di difetti, graffi e parti allentate.',
+                    'Controllare componenti e parti.',
+                    'Controllare numero di serie, etichette e simboli normativi.',
+                    "Verificare l'accensione dell'apparecchiatura vacuum - EMS.",
+                    'Effettuare la connessione Bluetooth delle piastre vacuum e EMS.',
+                    "Validazione del corretto funzionamento dell'EMS.",
+                    'Validare il corretto funzionamento del sistema di vuoto (vacuum).',
+                    'Validare il corretto funzionamento degli Infrarossi.',
+                    "Validare il funzionamento dell'Aromaterapia.",
+                    'Validare il corretto funzionamento del Tablet.',
+                    'Validare il corretto funzionamento di (tapis roulant – cyclette).',
+                    'Verificare il corretto funzionamento di LED e connettore USB-C.',
+                    "Verificare l'impianto elettrico nel centro (Terra, Neutro, Fase)."
+                ]
+            },
+            pt: {
+                titulo: 'Descrição da funcionalidade e do componente',
+                items: [
+                    'Inspeção visual, verificar a presença de defeitos, riscos e peças soltas.',
+                    'Verificar componentes e peças.',
+                    'Verificar número de série, etiquetas e símbolos normalizados.',
+                    'Verificar a ligação do equipamento vacuum - EMS.',
+                    'Realizar a ligação Bluetooth das placas vacuum e EMS.',
+                    'Validação do correto funcionamento do EMS.',
+                    'Validar o correto funcionamento do sistema de vácuo (vacuum).',
+                    'Validar o correto funcionamento do Infravermelho.',
+                    'Validar o funcionamento da Aromaterapia.',
+                    'Validar o correto funcionamento do Tablet.',
+                    'Validar o correto funcionamento da (passadeira – bicicleta estática).',
+                    'Verificar o correto funcionamento dos LED e do conetor USB-C.',
+                    'Verificar a instalação elétrica no centro (Terra, neutro, fase).'
+                ]
+            },
+            fr: {
+                titulo: 'Description de la fonctionnalité et du composant',
+                items: [
+                    'Inspection visuelle, vérifier la présence de défauts, rayures et pièces desserrées.',
+                    'Vérifier les composants et les pièces.',
+                    'Vérifier le numéro de série, les étiquettes et les symboles normalisés.',
+                    "Vérifier la mise sous tension de l'équipement vacuum - EMS.",
+                    'Effectuer la connexion Bluetooth des cartes vacuum et EMS.',
+                    "Validation du bon fonctionnement de l'EMS.",
+                    "Valider le bon fonctionnement du système d'aspiration (vacuum).",
+                    'Valider le bon fonctionnement des Infrarouges.',
+                    "Valider le fonctionnement de l'Aromathérapie.",
+                    'Valider le bon fonctionnement de la Tablette.',
+                    "Valider le bon fonctionnement du (tapis de course – vélo d'appartement).",
+                    'Vérifier le bon fonctionnement des LED et du connecteur USB-C.',
+                    "Vérifier l'installation électrique du centre (Terre, neutre, phase)."
+                ]
+            },
+            pl: {
+                titulo: 'Opis funkcjonalności i komponentu',
+                items: [
+                    'Kontrola wzrokowa, sprawdzenie pod kątem uszkodzeń, zarysowań i luźnych części.',
+                    'Sprawdzenie komponentów i części.',
+                    'Sprawdzenie numeru seryjnego, etykiet i znormalizowanych symboli.',
+                    'Sprawdzenie włączenia urządzenia vacuum - EMS.',
+                    'Nawiązanie połączenia Bluetooth płyt vacuum i EMS.',
+                    'Walidacja prawidłowego działania modułu EMS.',
+                    'Walidacja prawidłowego działania systemu próżniowego (vacuum).',
+                    'Walidacja prawidłowego działania podczerwieni (Infra-Rojo).',
+                    'Walidacja działania aromaterapii.',
+                    'Walidacja prawidłowego działania tabletu.',
+                    'Walidacja prawidłowego działania (bieżni – rowerka stacjonarnego).',
+                    'Sprawdzenie prawidłowego działania diody LED i złącza USB-C.',
+                    'Sprawdzenie instalacji elektrycznej w obiekcie (Uziemienie, neutralny, faza).'
+                ]
+            }
+        };
+
+        function updateConformidadText() {
+            const lang = document.getElementById('lang-conformidad').value;
+            const data = textConformidad[lang];
+            const rows = data.items.map((txt, i) =>
+                `<tr><td class="border border-slate-300 px-4 py-3 align-top text-slate-700"><span class="font-semibold text-slate-900 mr-2">${i + 1}.</span>${txt}</td></tr>`
+            ).join('');
+            document.getElementById('conformidad-table').innerHTML = `
+                <thead>
+                    <tr><th class="border border-slate-300 bg-slate-200 px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">${data.titulo}</th></tr>
+                </thead>
+                <tbody>${rows}</tbody>`;
+        }
+
+        function openConformidadModal() {
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('conformidad-view').classList.remove('hidden');
+            document.getElementById('cif-view').classList.add('hidden');
+            document.getElementById('contact-view').classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function closeConformidadModal() {
+            document.getElementById('conformidad-view').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function copyConformidadText(btn) {
+            const lang = document.getElementById('lang-conformidad').value;
+            const data = textConformidad[lang];
+            const text = data.items.map((txt, i) => `${i + 1}. ${txt}`).join('\n');
+            const origHtml = btn.innerHTML;
+            copyToClipboard(text, btn, origHtml);
+        }
+
         let toastTimeout;
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -542,6 +746,7 @@ Provincia: Madrid`;
         window.addEventListener('DOMContentLoaded', () => {
             updateInstalacionesText();
             updateAtencionText();
+            updateConformidadText();
         });
     </script>
 </body>
