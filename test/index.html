@@ -310,6 +310,56 @@
             { city: "New York, NY, United States", lat: 40.7128, lng: -74.0060, url: "https://www.numbeo.com/crime/in/New-York", daylight: 68.50, night: 42.10 }
         ];
 
+        // Ciudades con aeropuerto para los enlaces de vuelo por defecto (slug de Skyscanner y coordenadas).
+        // El origen es Madrid; se usa la ciudad más cercana a la instalación como destino.
+        const ORIGEN_VUELO = 'mad';
+        const AEROPUERTOS_VUELO = [
+            { slug: 'mad', lat: 40.4168, lng: -3.7038 },
+            { slug: 'bcn', lat: 41.2974, lng: 2.0833 },
+            { slug: 'vlc', lat: 39.4893, lng: -0.4816 },
+            { slug: 'svq', lat: 37.4180, lng: -5.8931 },
+            { slug: 'agp', lat: 36.6749, lng: -4.4991 },
+            { slug: 'bio', lat: 43.3011, lng: -2.9106 },
+            { slug: 'pmi', lat: 39.5517, lng: 2.7388 },
+            { slug: 'lis', lat: 38.7742, lng: -9.1342 },
+            { slug: 'opo', lat: 41.2481, lng: -8.6814 },
+            { slug: 'rome', lat: 41.8003, lng: 12.2389 },
+            { slug: 'mila', lat: 45.6306, lng: 8.7231 },
+            { slug: 'flr', lat: 43.8100, lng: 11.2051 },
+            { slug: 'vce', lat: 45.5053, lng: 12.3519 },
+            { slug: 'nap', lat: 40.8860, lng: 14.2908 },
+            { slug: 'pari', lat: 49.0097, lng: 2.5479 },
+            { slug: 'mrs', lat: 43.4393, lng: 5.2214 },
+            { slug: 'nce', lat: 43.6584, lng: 7.2159 },
+            { slug: 'lon', lat: 51.4700, lng: -0.4543 },
+            { slug: 'dub', lat: 53.4213, lng: -6.2701 },
+            { slug: 'ams', lat: 52.3105, lng: 4.7683 },
+            { slug: 'bru', lat: 50.9014, lng: 4.4844 },
+            { slug: 'ber', lat: 52.3667, lng: 13.5033 },
+            { slug: 'zrh', lat: 47.4647, lng: 8.5492 },
+            { slug: 'vie', lat: 48.1103, lng: 16.5697 },
+            { slug: 'prg', lat: 50.1008, lng: 14.2600 },
+            { slug: 'bud', lat: 47.4369, lng: 19.2556 },
+            { slug: 'waw', lat: 52.1657, lng: 20.9671 },
+            { slug: 'krk', lat: 50.0777, lng: 19.7848 },
+            { slug: 'tun', lat: 36.8510, lng: 10.2272 },
+            { slug: 'cmn', lat: 33.3675, lng: -7.5900 },
+            { slug: 'rak', lat: 31.6069, lng: -8.0363 }
+        ];
+
+        // Nombre de cada ciudad para buscar hoteles en Booking
+        const NOMBRE_CIUDAD_VUELO = {
+            mad: 'Madrid', bcn: 'Barcelona', vlc: 'Valencia', svq: 'Sevilla', agp: 'Málaga', bio: 'Bilbao',
+            pmi: 'Palma de Mallorca', lis: 'Lisboa', opo: 'Oporto', rome: 'Roma', mila: 'Milán', flr: 'Florencia',
+            vce: 'Venecia', nap: 'Nápoles', pari: 'París', mrs: 'Marsella', nce: 'Niza', lon: 'Londres',
+            dub: 'Dublín', ams: 'Ámsterdam', bru: 'Bruselas', ber: 'Berlín', zrh: 'Zúrich', vie: 'Viena',
+            prg: 'Praga', bud: 'Budapest', waw: 'Varsovia', krk: 'Cracovia', tun: 'Túnez', cmn: 'Casablanca',
+            rak: 'Marrakech'
+        };
+
+        // Identificador de afiliado de Booking (parámetro aid)
+        const BOOKING_AID = '303946';
+
         let registrosCargados = [];
         let mapaLeaflet = null;
         let fechaCalendarioActual = new Date();
@@ -407,6 +457,120 @@
                       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        function aeropuertoMasCercano(lat, lon) {
+            let masCercano = null;
+            let menorDistancia = Infinity;
+            AEROPUERTOS_VUELO.forEach(aeropuerto => {
+                const dist = calcularDistancia(lat, lon, aeropuerto.lat, aeropuerto.lng);
+                if (dist < menorDistancia) {
+                    menorDistancia = dist;
+                    masCercano = aeropuerto;
+                }
+            });
+            return masCercano;
+        }
+
+        // Fecha en formato AAMMDD, como la usa Skyscanner (2026-10-27 -> 261027)
+        function construirEnlaceVuelo(origen, destino, fechaIso) {
+            const fecha = fechaIso.replace(/-/g, '').slice(2);
+            return `https://www.skyscanner.es/transporte/vuelos/${origen}/${destino}/${fecha}/?adultsv2=1&cabinclass=economy&childrenv2=&ref=home&rtn=0&preferdirects=false&outboundaltsenabled=false&inboundaltsenabled=false&stops=%21twoPlusStops`;
+        }
+
+        // Un enlace es automático si está vacío o si es uno generado por esta función (se puede reemplazar)
+        const PATRON_ENLACE_VUELO_AUTO = /^https:\/\/www\.skyscanner\.es\/transporte\/vuelos\/[a-z]{3,4}\/[a-z]{3,4}\/\d{6}\//;
+        const PATRON_ENLACE_HOTEL_AUTO = /^https:\/\/www\.booking\.com\/searchresults\.es\.html\?/;
+
+        function enlaceAutomaticoReemplazable(link, patron) {
+            const valor = (link || '').trim();
+            return !valor || patron.test(valor);
+        }
+
+        // Día siguiente en formato AAAA-MM-DD (en UTC para no depender de la zona horaria)
+        function sumarDiaIso(fechaIso) {
+            const [anio, mes, dia] = fechaIso.split('-').map(Number);
+            return new Date(Date.UTC(anio, mes - 1, dia + 1)).toISOString().slice(0, 10);
+        }
+
+        // Busca hotel en la ciudad, entrada el día de instalación y salida al día siguiente
+        function construirEnlaceHotel(nombreCiudad, fechaIso) {
+            const params = new URLSearchParams({
+                aid: BOOKING_AID,
+                ss: nombreCiudad,
+                ssne: nombreCiudad,
+                ssne_untouched: nombreCiudad,
+                lang: 'es',
+                src: 'city',
+                checkin: fechaIso,
+                checkout: sumarDiaIso(fechaIso),
+                group_adults: '1',
+                no_rooms: '1',
+                group_children: '0'
+            });
+            return `https://www.booking.com/searchresults.es.html?${params.toString()}`;
+        }
+
+        const cacheAeropuertoVuelo = {};
+
+        // Rellena o actualiza los enlaces automáticos de vuelo (ida Madrid -> ciudad, vuelta ciudad -> Madrid) y hotel
+        async function autocompletarEnlacesViaje(id) {
+            const itemInicial = registrosCargados.find(r => r.id === id);
+            if (!itemInicial || !itemInicial.fecha_instalacion || !(itemInicial.direccion || '').trim()) return;
+
+            const dir = itemInicial.direccion.trim();
+            let aeropuerto = cacheAeropuertoVuelo[dir];
+            if (!aeropuerto) {
+                const geo = await geolocalizarConFallback(dir);
+                if (!geo) return;
+                aeropuerto = aeropuertoMasCercano(geo.lat, geo.lon);
+                if (!aeropuerto) return;
+                cacheAeropuertoVuelo[dir] = aeropuerto;
+            }
+
+            // Tras la espera, la fila pudo cambiar o eliminarse: se vuelve a leer
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item || !item.fecha_instalacion) return;
+            if (aeropuerto.slug === ORIGEN_VUELO) return;
+
+            const actualizar = {};
+
+            // Si la instalación está en Madrid no hay vuelo que buscar, pero sí hotel
+            if (aeropuerto.slug !== ORIGEN_VUELO) {
+                if (enlaceAutomaticoReemplazable(item.vuelo_ida_link, PATRON_ENLACE_VUELO_AUTO)) {
+                    actualizar.vuelo_ida_link = construirEnlaceVuelo(ORIGEN_VUELO, aeropuerto.slug, item.fecha_instalacion);
+                }
+                if (enlaceAutomaticoReemplazable(item.vuelo_vuelta_link, PATRON_ENLACE_VUELO_AUTO)) {
+                    actualizar.vuelo_vuelta_link = construirEnlaceVuelo(aeropuerto.slug, ORIGEN_VUELO, item.fecha_instalacion);
+                }
+            }
+            if (enlaceAutomaticoReemplazable(item.hotel_link, PATRON_ENLACE_HOTEL_AUTO)) {
+                actualizar.hotel_link = construirEnlaceHotel(NOMBRE_CIUDAD_VUELO[aeropuerto.slug], item.fecha_instalacion);
+            }
+
+            const cambios = Object.keys(actualizar).filter(campo => actualizar[campo] !== item[campo]);
+            if (cambios.length === 0) return;
+
+            const soloCambios = {};
+            cambios.forEach(campo => { soloCambios[campo] = actualizar[campo]; });
+            Object.assign(item, soloCambios);
+            await db.from('instalaciones').update(soloCambios).eq('id', id);
+
+            if (item.modo_viajes) rerenderFilaContent(id);
+        }
+
+        // Al cargar, completa las filas antiguas con algún enlace vacío (con fecha y dirección)
+        async function completarEnlacesViajePendientes() {
+            const pendientes = registrosCargados.filter(item =>
+                item.fecha_instalacion &&
+                (item.direccion || '').trim() &&
+                (!(item.vuelo_ida_link || '').trim() || !(item.vuelo_vuelta_link || '').trim() || !(item.hotel_link || '').trim())
+            );
+
+            for (const item of pendientes) {
+                await autocompletarEnlacesViaje(item.id);
+                await new Promise(resolve => setTimeout(resolve, 1200));
+            }
         }
 
         async function fetchNominatim(q) {
@@ -589,6 +753,8 @@
 
             registrosCargados = ordenarRegistros(items);
             registrosCargados.forEach(item => renderizarFila(item));
+
+            completarEnlacesViajePendientes();
         }
 
         async function crearNuevaLinea() {
@@ -678,6 +844,11 @@
                     // pero el país ya no es "Otro"; si el usuario quiere forzar, selecciona "Otro"
                     detectarPaisParaFila(id);
                 }
+            }
+
+            // Con fecha de instalación, rellenar o actualizar los enlaces de vuelo y hotel (al cambiar fecha o dirección)
+            if ((campo === 'fecha_instalacion' && valor) || (campo === 'direccion' && item && item.fecha_instalacion)) {
+                autocompletarEnlacesViaje(id);
             }
 
             // Reordenar la lista cuando el cambio afecta al orden (fecha o completado)
@@ -1188,6 +1359,9 @@
 
             cerrarModal('modalEditarViaje');
             rerenderFilaContent(id);
+
+            // Si se ha dejado un enlace vacío, se vuelve a rellenar (si la fila tiene fecha y dirección)
+            autocompletarEnlacesViaje(id);
         }
 
         function abrirModalVerVuelo(id, campo) {
@@ -1582,7 +1756,17 @@
             }
         }
 
-        document.getElementById('btnNuevaLinea').addEventListener('click', crearNuevaLinea);
+        // Evita crear dos líneas si se pulsa el botón dos veces mientras se guarda la primera
+        let creandoLinea = false;
+        document.getElementById('btnNuevaLinea').addEventListener('click', async () => {
+            if (creandoLinea) return;
+            creandoLinea = true;
+            try {
+                await crearNuevaLinea();
+            } finally {
+                creandoLinea = false;
+            }
+        });
         window.addEventListener('DOMContentLoaded', cargarInstalaciones);
     </script>
 </body>
