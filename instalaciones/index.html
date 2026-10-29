@@ -793,6 +793,21 @@
             }
         }
 
+        function generarConformidad(id) {
+            const item = registrosCargados.find(r => r.id === id);
+            if (!item) return;
+            const f = (item.fecha_instalacion || '').split('-');
+            const params = new URLSearchParams({
+                nombre: item.nombre || '',
+                direccion: item.direccion || '',
+                modelo: item.modelo || '',
+                fecha: f.length === 3 ? `${f[2]}/${f[1]}/${f[0]}` : '',
+                tecnico: 'Luis Miguel Sandoval',
+                print: '1'
+            });
+            window.open(`conformidad.html?${params}`, '_blank');
+        }
+
         function renderizarBloqueViaje(item, clave, tituloDefault) {
             const chk = item[`${clave}_chk`] || false;
             const nombre = (item[`${clave}_nombre`] || '').trim();
@@ -870,6 +885,7 @@
                                 ${renderizarBloqueViaje(item, 'coche', 'Coche')}
                                 ${renderizarBloqueViaje(item, 'hotel', 'Hotel')}
                                 ${renderizarBloqueViaje(item, 'vuelo_vuelta', 'Vuelo vuelta')}
+                                <button onclick="generarConformidad('${item.id}')" class="bg-white/70 px-2 py-1 rounded border border-slate-200 text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-500 transition shrink-0" title="Generar conformidad de instalación (imprimir)">📄 Conformidad</button>
                             </div>
 
                             <div id="widget-info-${item.id}" class="flex items-center gap-2 text-xs bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0">
