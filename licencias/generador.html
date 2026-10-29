@@ -308,22 +308,17 @@ var LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAbEAAACdCAIAAAC1q9EfAA
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// Acceso: solo editor y admin. Con ?id=<linea> rellena el formulario desde la tabla licencias y genera el test.
+// Acceso: solo editor y admin, según el final del enlace (?nombre=editor | ?nombre=admin).
+// Con ?id=<linea> rellena el formulario desde la tabla licencias y genera el test.
 (async function () {
-  var db = supabase.createClient('https://xgbgnofruzjrvfalckvl.supabase.co', 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf');
-  var volver = function () { location.replace('index.html'); };
-
-  var ses = (await db.auth.getSession()).data.session;
-  if (!ses) return volver();
-  var perfil = (await db.from('perfiles').select('rol').eq('user_id', ses.user.id).single()).data;
-  if (!perfil || (perfil.rol !== 'editor' && perfil.rol !== 'admin')) {
-    alert('Solo editor o admin pueden usar el generador.');
-    return volver();
-  }
+  var params = new URLSearchParams(location.search);
+  var rol = params.get('nombre') || params.get('nobre');
+  if (rol !== 'editor' && rol !== 'admin') { location.replace('index.html'); return; }
   document.documentElement.style.visibility = 'visible';
 
-  var id = new URLSearchParams(location.search).get('id');
+  var id = params.get('id');
   if (!id) return;
+  var db = supabase.createClient('https://xgbgnofruzjrvfalckvl.supabase.co', 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf');
   var r = await db.from('licencias').select('modelo,mac_placa,mac_mci').eq('id', id).single();
   if (r.error || !r.data) { alert('No se pudo cargar la línea.'); return; }
 

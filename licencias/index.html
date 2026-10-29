@@ -17,28 +17,15 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
 
-    <!-- LOGIN -->
-    <div id="vistaLogin" class="hidden max-w-sm mx-auto mt-24 bg-white rounded-lg shadow p-6">
-        <h1 class="text-xl font-bold mb-1">Licencias</h1>
-        <p class="text-sm text-slate-500 mb-4">Inicia sesión para continuar</p>
-        <form id="formLogin" class="space-y-3">
-            <input id="loginEmail" type="email" required placeholder="Correo" autocomplete="username" class="w-full p-2 border border-slate-300 rounded">
-            <input id="loginPass" type="password" required placeholder="Contraseña" autocomplete="current-password" class="w-full p-2 border border-slate-300 rounded">
-            <p id="loginError" class="text-sm text-red-600 min-h-[1.25rem]"></p>
-            <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded">Entrar</button>
-        </form>
-    </div>
-
     <!-- APP -->
-    <div id="vistaApp" class="hidden max-w-5xl mx-auto p-4">
+    <div id="vistaApp" class="max-w-5xl mx-auto p-4">
         <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div>
                 <h1 class="text-2xl font-bold">Licencias</h1>
-                <p class="text-sm text-slate-500">Sesión: <span id="infoUsuario"></span></p>
+                <p class="text-sm text-slate-500">Modo: <span id="infoUsuario"></span></p>
             </div>
             <div class="flex gap-2">
                 <button onclick="crearNuevaLinea()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded">+ Nueva línea</button>
-                <button onclick="cerrarSesion()" class="bg-slate-200 hover:bg-slate-300 px-4 py-2 rounded">Salir</button>
             </div>
         </header>
 
@@ -67,7 +54,13 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_k1se_GmxiO-45tC5AT_0kA_CtO8lvxf';
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let rolActual = null; // 'user' | 'editor' | 'admin'
+        // Rol según el final del enlace (igual que instalaciones):
+        //   index.html?nombre=admin  |  index.html?nombre=editor  |  index.html (user)
+        const params = new URLSearchParams(window.location.search);
+        const nombreParam = params.get('nombre') || params.get('nobre');
+        const rolActual = (nombreParam === 'admin' || nombreParam === 'editor') ? nombreParam : 'user';
+        document.body.classList.add('rol-' + rolActual);
+
         const puedeLicencia = () => rolActual === 'editor' || rolActual === 'admin';
         const puedeEliminar = () => rolActual === 'admin';
 
@@ -80,55 +73,7 @@
         }
 
         // ------------------------------------------------------------------
-        // 2. SESIÓN Y ROL
-        // ------------------------------------------------------------------
-        async function iniciar() {
-            const { data: { session } } = await db.auth.getSession();
-            if (!session) return mostrarLogin();
-
-            const { data: perfil, error } = await db.from('perfiles').select('rol,email').eq('user_id', session.user.id).single();
-            if (error || !perfil) {
-                await db.auth.signOut();
-                mostrarLogin('Tu usuario no tiene perfil. Ejecuta el SQL de setup.');
-                return;
-            }
-            rolActual = perfil.rol;
-            document.body.classList.remove('rol-editor', 'rol-admin');
-            if (rolActual === 'editor') document.body.classList.add('rol-editor');
-            if (rolActual === 'admin') document.body.classList.add('rol-admin');
-
-            document.getElementById('infoUsuario').textContent = `${perfil.email || session.user.email} (${rolActual})`;
-            document.getElementById('vistaLogin').classList.add('hidden');
-            document.getElementById('vistaApp').classList.remove('hidden');
-            cargarLicencias();
-        }
-
-        function mostrarLogin(msg = '') {
-            document.getElementById('vistaApp').classList.add('hidden');
-            document.getElementById('vistaLogin').classList.remove('hidden');
-            document.getElementById('loginError').textContent = msg;
-        }
-
-        document.getElementById('formLogin').addEventListener('submit', async e => {
-            e.preventDefault();
-            const { error } = await db.auth.signInWithPassword({
-                email: document.getElementById('loginEmail').value.trim(),
-                password: document.getElementById('loginPass').value
-            });
-            if (error) { document.getElementById('loginError').textContent = 'Correo o contraseña incorrectos.'; return; }
-            document.getElementById('loginPass').value = '';
-            iniciar();
-        });
-
-        async function cerrarSesion() {
-            await db.auth.signOut();
-            rolActual = null;
-            document.getElementById('tablaCuerpo').innerHTML = '';
-            mostrarLogin();
-        }
-
-        // ------------------------------------------------------------------
-        // 3. OPERACIONES
+        // 2. OPERACIONES
         // ------------------------------------------------------------------
         async function cargarLicencias() {
             const { data, error } = await db.from('licencias').select('*').order('created_at', { ascending: true });
@@ -172,11 +117,11 @@
 
         // Abre el generador (solo editor/admin; el propio generador lo vuelve a comprobar)
         function generarTest(id) {
-            window.open('generador.html?id=' + encodeURIComponent(id), '_blank');
+            window.open('generador.html?id=' + encodeURIComponent(id) + '&nombre=' + rolActual, '_blank');
         }
 
         // ------------------------------------------------------------------
-        // 4. RENDER
+        // 3. RENDER
         // ------------------------------------------------------------------
         function renderizarFila(item) {
             const tr = document.createElement('tr');
@@ -203,7 +148,8 @@
             document.getElementById('tablaCuerpo').appendChild(tr);
         }
 
-        iniciar();
+        document.getElementById('infoUsuario').textContent = rolActual;
+        cargarLicencias();
     </script>
 </body>
 </html>
