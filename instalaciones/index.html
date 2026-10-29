@@ -558,9 +558,6 @@
                 return;
             }
 
-            const hoy = new Date();
-            const dosSemanasEnMs = 14 * 24 * 60 * 60 * 1000;
-
             const tbody = document.getElementById('tablaCuerpo');
             tbody.innerHTML = '';
             registrosCargados = [];
@@ -572,14 +569,6 @@
 
             const items = [];
             data.forEach((item, index) => {
-                if (item.concluido && item.fecha_concluido) {
-                    const fechaConcluido = new Date(item.fecha_concluido);
-                    if (hoy - fechaConcluido >= dosSemanasEnMs) {
-                        eliminarFila(item.id, true);
-                        return;
-                    }
-                }
-
                 item.modo_viajes = false;
                 item.modo_envios = false;
                 item.pais_detectado = item.pais_detectado || null;
