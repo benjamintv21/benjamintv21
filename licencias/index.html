@@ -9,7 +9,6 @@
     <style>
         tr input, tr select { background-color: #ffffff !important; }
         .mono { font-family: Consolas, monospace; text-transform: uppercase; letter-spacing: 1px; }
-        .inp-error { border-color: #dc2626 !important; }
         /* Elementos por rol: se muestran según la clase que ponga el script en <body> */
         body:not(.rol-editor):not(.rol-admin) .solo-editor { display: none; }
         body:not(.rol-admin) .solo-admin { display: none; }
@@ -66,12 +65,6 @@
 
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-        // 12 dígitos hexadecimales; admite A1:B2:..., A1-B2-... o sin separadores
-        function limpiarMac(v) {
-            const h = String(v || '').replace(/[\s:.-]/g, '').toUpperCase();
-            return /^[0-9A-F]{12}$/.test(h) ? h : null;
-        }
-
         // ------------------------------------------------------------------
         // 2. OPERACIONES
         // ------------------------------------------------------------------
@@ -92,17 +85,9 @@
         }
 
         async function actualizarCampo(id, campo, valor, input) {
-            if (campo === 'mac_placa' || campo === 'mac_mci') {
-                valor = valor.trim();
-                if (valor) {
-                    const limpia = limpiarMac(valor);
-                    if (!limpia) { input.classList.add('inp-error'); input.title = 'Debe tener 12 dígitos hexadecimales (0-9, A-F)'; return; }
-                    valor = limpia;
-                    input.value = limpia;
-                }
-                input.classList.remove('inp-error');
-                input.title = '';
-            }
+            // Sin validación: se guarda lo escrito (p. ej. solo los 4 últimos dígitos de la MAC);
+            // el editor la completa después. El generador exige los 12 dígitos al generar.
+            if (campo === 'mac_placa' || campo === 'mac_mci') valor = valor.trim();
             const { error } = await db.from('licencias').update({ [campo]: valor }).eq('id', id);
             if (error) alert('No se pudo guardar: ' + error.message);
         }
