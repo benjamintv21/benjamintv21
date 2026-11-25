@@ -35,8 +35,8 @@
             </div>
         </header>
 
-        <!-- FILTRO POR FECHAS -->
-        <div class="bg-white rounded-lg shadow p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
+        <!-- FILTRO POR FECHAS (user no lo ve: siempre tiene la semana actual) -->
+        <div class="solo-editor bg-white rounded-lg shadow p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
             <button id="btnSemana" onclick="filtrarSemanaActual()" class="border border-slate-300 hover:bg-slate-50 font-semibold px-3 py-1.5 rounded">Semana actual</button>
             <label class="flex items-center gap-1">Desde <input type="date" id="filtroDesde" onchange="aplicarFiltro()" class="p-1 border border-slate-300 rounded"></label>
             <label class="flex items-center gap-1">Hasta <input type="date" id="filtroHasta" onchange="aplicarFiltro()" class="p-1 border border-slate-300 rounded"></label>
@@ -48,7 +48,7 @@
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
                     <tr>
-                        <th class="p-2 w-24">Fecha</th>
+                        <th class="solo-editor p-2 w-24">Fecha</th>
                         <th class="p-2 w-28">Modelo</th>
                         <th class="p-2 w-14">Color</th>
                         <th class="p-2">MAC placa</th>
@@ -229,7 +229,8 @@
 
             const hayFiltro = document.getElementById('filtroDesde').value || document.getElementById('filtroHasta').value;
             const sinDatos = document.getElementById('sinDatos');
-            sinDatos.textContent = licencias.length ? 'No hay líneas con este filtro.' : 'No hay líneas todavía.';
+            sinDatos.textContent = !licencias.length ? 'No hay líneas todavía.'
+                : rolActual === 'user' ? 'No hay líneas esta semana.' : 'No hay líneas con este filtro.';
             sinDatos.classList.toggle('hidden', visibles.length > 0);
             document.getElementById('infoFiltro').textContent = (hayFiltro || visibles.length !== licencias.length)
                 ? `Mostrando ${visibles.length} de ${licencias.length}` : `${licencias.length} líneas`;
@@ -242,7 +243,7 @@
             const idq = esc(item.id);
             const color = COLORES[item.color] ? item.color : null;
             tr.innerHTML = `
-                <td class="p-2 whitespace-nowrap text-slate-600">${esc(fechaDe(item))}</td>
+                <td class="solo-editor p-2 whitespace-nowrap text-slate-600">${esc(fechaDe(item))}</td>
                 <td class="p-2">
                     <select onchange="actualizarCampo('${idq}', 'modelo', this.value, this)" class="w-full p-1 border border-slate-300 rounded">
                         <option value="Space" ${item.modelo === 'Space' ? 'selected' : ''}>Space</option>
@@ -269,6 +270,8 @@
         }
 
         document.getElementById('infoUsuario').textContent = rolActual;
+        // user siempre ve solo la semana actual (de lunes a sábado)
+        if (rolActual === 'user') filtrarSemanaActual();
         cargarLicencias();
     </script>
 </body>
