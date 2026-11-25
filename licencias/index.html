@@ -12,37 +12,62 @@
         /* Elementos por rol: se muestran según la clase que ponga el script en <body> */
         body:not(.rol-editor):not(.rol-admin) .solo-editor { display: none; }
         body:not(.rol-admin) .solo-admin { display: none; }
+        /* Cuadrado de color: blanco, negro o los tres colores de los píxeles LED */
+        .muestra { display: inline-block; width: 18px; height: 18px; border-radius: 3px; border: 1px solid #94a3b8; vertical-align: middle; }
+        .muestra-black { background: #000000; }
+        .muestra-white { background: #FFFFFF; }
+        .muestra-other { background: linear-gradient(90deg, #ff0000 0 33.33%, #00c000 33.33% 66.66%, #0040ff 66.66% 100%); }
+        .muestra-vacio { background: transparent; border-style: dashed; }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
 
     <!-- APP -->
-    <div id="vistaApp" class="max-w-5xl mx-auto p-4">
+    <div id="vistaApp" class="max-w-6xl mx-auto p-4">
         <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div>
                 <h1 class="text-2xl font-bold">Licencias</h1>
                 <p class="text-sm text-slate-500">Modo: <span id="infoUsuario"></span></p>
             </div>
             <div class="flex gap-2">
+                <button id="btnArchivadas" onclick="alternarArchivadas()" class="solo-editor bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded">Mostrar todas</button>
                 <button onclick="crearNuevaLinea()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded">+ Nueva línea</button>
             </div>
         </header>
+
+        <!-- FILTRO POR FECHAS -->
+        <div class="bg-white rounded-lg shadow p-3 mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <button id="btnSemana" onclick="filtrarSemanaActual()" class="border border-slate-300 hover:bg-slate-50 font-semibold px-3 py-1.5 rounded">Semana actual</button>
+            <label class="flex items-center gap-1">Desde <input type="date" id="filtroDesde" onchange="aplicarFiltro()" class="p-1 border border-slate-300 rounded"></label>
+            <label class="flex items-center gap-1">Hasta <input type="date" id="filtroHasta" onchange="aplicarFiltro()" class="p-1 border border-slate-300 rounded"></label>
+            <button onclick="quitarFiltro()" class="text-slate-500 hover:text-slate-800 px-2 py-1.5">Quitar filtro</button>
+            <span id="infoFiltro" class="ml-auto text-slate-500"></span>
+        </div>
 
         <div class="bg-white rounded-lg shadow overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-left text-xs uppercase text-slate-500">
                     <tr>
+                        <th class="p-2 w-24">Fecha</th>
                         <th class="p-2 w-28">Modelo</th>
+                        <th class="p-2 w-14">Color</th>
                         <th class="p-2">MAC placa</th>
                         <th class="p-2">MAC MCI</th>
                         <th class="p-2">Licencia</th>
-                        <th class="p-2 w-40 text-right">Acciones</th>
+                        <th class="p-2 w-48 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaCuerpo"></tbody>
             </table>
             <p id="sinDatos" class="hidden p-4 text-center text-slate-400">No hay líneas todavía.</p>
         </div>
+    </div>
+
+    <!-- Desplegable de colores (uno para toda la página, se coloca junto al cuadrado pulsado) -->
+    <div id="menuColor" class="hidden fixed z-50 bg-white border border-slate-300 rounded shadow-lg p-1 flex gap-1">
+        <button onclick="elegirColor('black')" title="Negro" class="p-1 hover:bg-slate-100 rounded"><span class="muestra muestra-black"></span></button>
+        <button onclick="elegirColor('white')" title="Blanco" class="p-1 hover:bg-slate-100 rounded"><span class="muestra muestra-white"></span></button>
+        <button onclick="elegirColor('other')" title="Otro (LED RGB)" class="p-1 hover:bg-slate-100 rounded"><span class="muestra muestra-other"></span></button>
     </div>
 
     <script>
@@ -65,23 +90,31 @@
 
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+        const COLORES = { black: 'Negro', white: 'Blanco', other: 'Otro (LED RGB)' };
+
+        // Todas las líneas cargadas; la tabla muestra las que pasan el filtro
+        let licencias = [];
+        let verArchivadas = false;
+
+        // Fecha local como aaaa-mm-dd (el formato de <input type="date">)
+        const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const fechaDe = item => item.fecha || new Date(item.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
         // ------------------------------------------------------------------
         // 2. OPERACIONES
         // ------------------------------------------------------------------
         async function cargarLicencias() {
             const { data, error } = await db.from('licencias').select('*').order('created_at', { ascending: true });
             if (error) { console.error(error); alert('Error al cargar: ' + error.message); return; }
-            const tbody = document.getElementById('tablaCuerpo');
-            tbody.innerHTML = '';
-            data.forEach(renderizarFila);
-            document.getElementById('sinDatos').classList.toggle('hidden', data.length > 0);
+            licencias = data;
+            pintarTabla();
         }
 
         async function crearNuevaLinea() {
             const { data, error } = await db.from('licencias').insert({ modelo: 'Space' }).select().single();
             if (error) { alert('Error al crear la línea: ' + error.message); return; }
-            document.getElementById('sinDatos').classList.add('hidden');
-            renderizarFila(data);
+            licencias.push(data);
+            pintarTabla();
         }
 
         async function actualizarCampo(id, campo, valor, input) {
@@ -89,15 +122,29 @@
             // el editor la completa después. El generador exige los 12 dígitos al generar.
             if (campo === 'mac_placa' || campo === 'mac_mci') valor = valor.trim();
             const { error } = await db.from('licencias').update({ [campo]: valor }).eq('id', id);
-            if (error) alert('No se pudo guardar: ' + error.message);
+            if (error) { alert('No se pudo guardar: ' + error.message); return false; }
+            const item = licencias.find(l => l.id === id);
+            if (item) item[campo] = valor;
+            return true;
         }
 
         async function eliminarFila(id) {
             if (!confirm('¿Seguro que deseas eliminar esta línea?')) return;
             const { error } = await db.from('licencias').delete().eq('id', id);
             if (error) { alert('No se pudo eliminar: ' + error.message); return; }
-            document.getElementById('fila-' + id)?.remove();
-            if (!document.getElementById('tablaCuerpo').children.length) document.getElementById('sinDatos').classList.remove('hidden');
+            licencias = licencias.filter(l => l.id !== id);
+            pintarTabla();
+        }
+
+        // Archivar oculta la línea; con "Mostrar todas" se ve atenuada y se puede desarchivar
+        async function archivarFila(id, archivar) {
+            if (await actualizarCampo(id, 'archivada', archivar)) pintarTabla();
+        }
+
+        function alternarArchivadas() {
+            verArchivadas = !verArchivadas;
+            document.getElementById('btnArchivadas').textContent = verArchivadas ? 'Ocultar archivadas' : 'Mostrar todas';
+            pintarTabla();
         }
 
         // Abre el generador (solo editor/admin; el propio generador lo vuelve a comprobar)
@@ -106,19 +153,106 @@
         }
 
         // ------------------------------------------------------------------
-        // 3. RENDER
+        // 3. COLOR
         // ------------------------------------------------------------------
+        let colorFila = null;
+
+        function abrirMenuColor(id, boton) {
+            const menu = document.getElementById('menuColor');
+            if (colorFila === id && !menu.classList.contains('hidden')) { cerrarMenuColor(); return; }
+            colorFila = id;
+            const r = boton.getBoundingClientRect();
+            menu.style.left = r.left + 'px';
+            menu.style.top = (r.bottom + 4) + 'px';
+            menu.classList.remove('hidden');
+        }
+
+        function cerrarMenuColor() {
+            document.getElementById('menuColor').classList.add('hidden');
+            colorFila = null;
+        }
+
+        async function elegirColor(color) {
+            const id = colorFila;
+            cerrarMenuColor();
+            if (id && await actualizarCampo(id, 'color', color)) pintarTabla();
+        }
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('#menuColor') && !e.target.closest('.btn-color')) cerrarMenuColor();
+        });
+        window.addEventListener('scroll', cerrarMenuColor, true);
+
+        // ------------------------------------------------------------------
+        // 4. FILTRO POR FECHAS (por el día de creación)
+        // ------------------------------------------------------------------
+        // Semana actual: del lunes al sábado de esta semana
+        function filtrarSemanaActual() {
+            const hoy = new Date();
+            const lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - ((hoy.getDay() + 6) % 7));
+            const sabado = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 5);
+            document.getElementById('filtroDesde').value = isoLocal(lunes);
+            document.getElementById('filtroHasta').value = isoLocal(sabado);
+            aplicarFiltro();
+        }
+
+        function quitarFiltro() {
+            document.getElementById('filtroDesde').value = '';
+            document.getElementById('filtroHasta').value = '';
+            aplicarFiltro();
+        }
+
+        function aplicarFiltro() {
+            pintarTabla();
+        }
+
+        function lineasVisibles() {
+            const desde = document.getElementById('filtroDesde').value;
+            const hasta = document.getElementById('filtroHasta').value;
+            return licencias.filter(item => {
+                if (item.archivada && !verArchivadas) return false;
+                const dia = isoLocal(new Date(item.created_at));
+                if (desde && dia < desde) return false;
+                if (hasta && dia > hasta) return false;
+                return true;
+            });
+        }
+
+        // ------------------------------------------------------------------
+        // 5. RENDER
+        // ------------------------------------------------------------------
+        function pintarTabla() {
+            const tbody = document.getElementById('tablaCuerpo');
+            tbody.innerHTML = '';
+            const visibles = lineasVisibles();
+            visibles.forEach(renderizarFila);
+
+            const hayFiltro = document.getElementById('filtroDesde').value || document.getElementById('filtroHasta').value;
+            const sinDatos = document.getElementById('sinDatos');
+            sinDatos.textContent = licencias.length ? 'No hay líneas con este filtro.' : 'No hay líneas todavía.';
+            sinDatos.classList.toggle('hidden', visibles.length > 0);
+            document.getElementById('infoFiltro').textContent = (hayFiltro || visibles.length !== licencias.length)
+                ? `Mostrando ${visibles.length} de ${licencias.length}` : `${licencias.length} líneas`;
+        }
+
         function renderizarFila(item) {
             const tr = document.createElement('tr');
             tr.id = 'fila-' + item.id;
-            tr.className = 'border-t border-slate-100';
+            tr.className = 'border-t border-slate-100' + (item.archivada ? ' opacity-50 bg-slate-50' : '');
             const idq = esc(item.id);
+            const color = COLORES[item.color] ? item.color : null;
             tr.innerHTML = `
+                <td class="p-2 whitespace-nowrap text-slate-600">${esc(fechaDe(item))}</td>
                 <td class="p-2">
                     <select onchange="actualizarCampo('${idq}', 'modelo', this.value, this)" class="w-full p-1 border border-slate-300 rounded">
                         <option value="Space" ${item.modelo === 'Space' ? 'selected' : ''}>Space</option>
                         <option value="Bike" ${item.modelo === 'Bike' ? 'selected' : ''}>Bike</option>
                     </select>
+                </td>
+                <td class="p-2 text-center">
+                    <button onclick="abrirMenuColor('${idq}', this)" title="${color ? COLORES[color] : 'Elegir color'}" class="btn-color p-1 border border-slate-300 rounded hover:bg-slate-50">
+                        <span class="muestra ${color ? 'muestra-' + color : 'muestra-vacio'}"></span><span class="text-[10px] text-slate-400 ml-0.5">▾</span>
+                    </button>
                 </td>
                 <td class="p-2"><input type="text" maxlength="17" value="${esc(item.mac_placa)}" placeholder="A1B2C3D4E5F6"
                     onchange="actualizarCampo('${idq}', 'mac_placa', this.value, this)" class="mono w-full p-1 border border-slate-300 rounded"></td>
@@ -128,6 +262,7 @@
                     onchange="actualizarCampo('${idq}', 'licencia', this.value, this)" class="w-full p-1 border border-slate-300 rounded disabled:bg-slate-100 disabled:text-slate-400"></td>
                 <td class="p-2 text-right whitespace-nowrap">
                     <button onclick="generarTest('${idq}')" class="solo-editor bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded">Generar test</button>
+                    <button onclick="archivarFila('${idq}', ${!item.archivada})" class="solo-editor bg-slate-500 hover:bg-slate-600 text-white text-xs font-semibold px-3 py-1.5 rounded">${item.archivada ? 'Desarchivar' : 'Archivar'}</button>
                     <button onclick="eliminarFila('${idq}')" class="solo-admin text-red-500 hover:text-red-700 font-bold p-1 hover:bg-red-50 rounded" title="Eliminar línea">🗑️</button>
                 </td>`;
             document.getElementById('tablaCuerpo').appendChild(tr);

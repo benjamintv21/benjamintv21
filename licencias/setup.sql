@@ -49,3 +49,30 @@ create policy licencias_publico on public.licencias
   using (true) with check (true);
 
 grant select, insert, update, delete on public.licencias to anon, authenticated;
+
+-- 3) Fecha de creación (dd/mm/aaaa, hora de Madrid) y color ------------------
+alter table public.licencias
+  add column if not exists fecha text
+    default to_char(now() at time zone 'Europe/Madrid', 'DD/MM/YYYY'),
+  add column if not exists color text
+    check (color in ('black', 'white', 'other'));
+
+update public.licencias
+set fecha = to_char(created_at at time zone 'Europe/Madrid', 'DD/MM/YYYY')
+where fecha is distinct from to_char(created_at at time zone 'Europe/Madrid', 'DD/MM/YYYY');
+
+create or replace function public.licencias_set_fecha()
+returns trigger language plpgsql as $$
+begin
+  new.fecha := to_char(coalesce(new.created_at, now()) at time zone 'Europe/Madrid', 'DD/MM/YYYY');
+  return new;
+end $$;
+
+drop trigger if exists licencias_set_fecha on public.licencias;
+create trigger licencias_set_fecha
+  before insert or update of created_at on public.licencias
+  for each row execute function public.licencias_set_fecha();
+
+-- 4) Archivado: las líneas archivadas se ocultan hasta pulsar "Mostrar todas" --
+alter table public.licencias
+  add column if not exists archivada boolean not null default false;
